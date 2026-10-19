@@ -95,7 +95,10 @@
   @media (prefers-reduced-motion: reduce) { .status-chip .pulse, * { animation: none !important; } }
 
   .status-row { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .tray-preview { font-size: 9.5px; color: var(--sec); }
+  .gh-star { display: flex; align-items: center; gap: 3px; font-size: 9.5px; color: var(--sec); text-decoration: none; opacity: .85; flex-shrink: 0; }
+  .gh-star svg { fill: currentColor; flex-shrink: 0; }
+  .gh-star:hover { opacity: 1; text-decoration: underline; text-underline-offset: 2px; }
+  .gh-star:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .notes p { font-size: 14px; line-height: 1.65; color: var(--muted); margin: 0 0 14px; }
   footer.page { margin-top: 48px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 16px; }
@@ -298,7 +301,10 @@
             </div>
             <div class="status-row">
               <span class="status-chip" id="statusChip"><span class="pulse"></span><span id="statusChipText"></span></span>
-              <span class="tray-preview" id="trayPreview"></span>
+              <a class="gh-star" href="https://github.com/raflisbk/zigggler" target="_blank" rel="noopener noreferrer">
+                <svg viewBox="0 0 20 20" width="9" height="9" aria-hidden="true"><path d="M10 1.3l2.55 5.17 5.7.83-4.13 4.02.97 5.68L10 14.2l-5.09 2.8.97-5.68L1.75 7.3l5.7-.83L10 1.3z"/></svg>
+                <span id="ghStarText"></span>
+              </a>
             </div>
           </div>
 
@@ -349,7 +355,7 @@
       backLabel: "cus balik",
       chipOn: "lagi nge-jig",
       chipOff: "woles dulu",
-      trayPreview: "tray: nyala",
+      ghStar: "bintangin repo-nya ya",
       footer: "toggle &amp; slider-nya jalan asli. tema &amp; bahasa kesimpen, gak ke-reset.",
       langName: "ID"
     },
@@ -366,7 +372,7 @@
       backLabel: "back",
       chipOn: "jigglin'",
       chipOff: "off",
-      trayPreview: "tray: on",
+      ghStar: "star the repo",
       footer: "toggle &amp; slider actually work. theme &amp; language stick around between launches.",
       langName: "EN"
     },
@@ -383,7 +389,7 @@
       backLabel: "戻る",
       chipOn: "ジグってる",
       chipOff: "オフ",
-      trayPreview: "トレイ: オン",
+      ghStar: "GitHubでスターちょうだい",
       footer: "トグルとスライダーはちゃんと動くよ。テーマと言語は次回も覚えてる。",
       langName: "WB"
     }
@@ -540,7 +546,7 @@
     document.getElementById("idleDesc").textContent = d.idleDesc;
     document.getElementById("themeViewTitle").textContent = d.themeViewTitle;
     document.getElementById("backLabel").textContent = d.backLabel;
-    document.getElementById("trayPreview").textContent = "● " + d.trayPreview;
+    document.getElementById("ghStarText").textContent = d.ghStar;
     document.getElementById("footerNote").innerHTML = d.footer;
     document.querySelectorAll(".theme-pick .nm").forEach(function(span, idx){
       span.textContent = THEMES[idx].name[lang];
