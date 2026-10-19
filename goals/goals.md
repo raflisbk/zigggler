@@ -113,4 +113,6 @@ Implementasi kode: pakai trait abstraction (`trait MouseInjector { fn jiggle(&se
 - 2026-10-19 [pm] [DECISION] Remote origin URL kena typo (`https:/` → `https://`), udah di-fix sebelum role mulai push.
 - 2026-10-20 [platform-compat] [DONE] Udev rule installer (`platform/linux/99-uinput.rules` + `install-udev-rule.sh`) buat akses `/dev/uinput` (grup `input` + `uaccess`). Verifikasi `ext-idle-notify-v1` di KWin 6.3.6 device ini via `wayland-info` (interface `ext_idle_notifier_v1` version 1 tampil, bukan asumsi) — gak perlu fallback dbus buat P0. Gotcha scaling dicatat: scale 1.1, logical 1746x982 (deket sama 1749x983 di PRD), WebKitGTK rawan sub-pixel rounding di fractional scale — perlu dites khusus pas QA tema pixel-art. — PR #2 (`feat/platform-compat-udev-idle-docs`)
 
+- 2026-10-20 [qa-release] [DONE] Review + merge PR #2 (platform-compat): acceptance criteria udev installer, idle protocol verification, scaling gotcha — semua lolos. Direktori utama ke-checkout ke branch rust-core pas review (numpuk kerjaan role lain), dibalikin ke `main` sesuai rule #0 worktree. qa-release pakai worktree terpisah mulai sekarang buat tiap review/kerjaan.
+
 <!-- Role: tambah entry baru di bawah ini, jangan edit/hapus entry lama -->
