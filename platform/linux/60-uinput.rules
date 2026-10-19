@@ -1,1 +1,6 @@
 KERNEL=="uinput", SUBSYSTEM=="misc", MODE="0660", TAG+="uaccess"
+
+# Device virtual yang dibuat app ini lewat uinput butuh ACL sendiri biar kompositor
+# (jalan sebagai user biasa) bisa baca eventnya. Di-scope ke nama device ini doang —
+# BUKAN grup "input" global, biar gak kebuka akses baca keyboard/mouse fisik.
+SUBSYSTEM=="input", ATTRS{name}=="zzzzziglerrr-jiggler", TAG+="uaccess"
