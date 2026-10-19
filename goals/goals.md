@@ -43,13 +43,14 @@ PM (founder, di tab ini — `w1:t1`) koordinasi via `herdr pane run`, gak langsu
 
 1. **Satu fitur = satu branch.** Branch dari `main`, nama: `feat/<role>-<fitur-singkat>` (contoh: `feat/rust-core-uinput-jiggle`, `feat/frontend-ui-theme-picker`).
 2. Kerja di branch itu sampai fitur selesai + lolos acceptance criteria di goals ini.
-3. Commit dengan pesan jelas (conventional commits: `feat:`, `fix:`, `docs:`, dst).
+3. Commit dengan pesan jelas (conventional commits: `feat:`, `fix:`, `docs:`, dst sebagai prefix standar). **Isi pesan + deskripsi PR WAJIB Bahasa Indonesia gaya santai/slang** senada copy app ini (nge-jig, woles, sat-set, cus, dst) — bukan bahasa formal korporat. Prefix tipe tetap standar, cuma body/deskripsi yang slang.
 4. `git push -u origin <branch>`.
-5. Buka PR ke `main` via `gh pr create` — isi deskripsi: apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
+5. Buka PR ke `main` via `gh pr create` — isi deskripsi (slang, lihat poin 3): apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
 6. **qa-release** review dulu sebelum merge (kalau qa-release belum spawn/belum sempat, PM review).
-7. Merge ke `main` (squash atau merge commit, konsisten), delete branch abis merge.
-8. **Update `goals/goals.md`** (bagian Status & Log di bawah) — tambah baris baru, JANGAN timpa history lama.
-9. Kalau nemu bug blocking di tengah kerja: jangan diemin, catat di Status & Log dengan tag `[BUG]`, lanjut kerja atau tanya PM via herdr kalau butuh keputusan.
+7. **Sebelum merge PR manapun, WAJIB cek dulu**: `gh pr view <nomor> --json mergeable -q .mergeable` — kalau hasilnya bukan `MERGEABLE`, resolve conflict dulu, jangan paksa merge.
+8. Merge ke `main` (squash atau merge commit, konsisten), delete branch abis merge.
+9. **Update `goals/goals.md`** (bagian Status & Log di bawah) — tambah baris baru, JANGAN timpa history lama.
+10. Kalau nemu bug blocking di tengah kerja: jangan diemin, catat di Status & Log dengan tag `[BUG]`, lanjut kerja atau tanya PM via herdr kalau butuh keputusan.
 
 **Tidak boleh**: commit langsung ke `main`, force push ke `main`, skip PR.
 
