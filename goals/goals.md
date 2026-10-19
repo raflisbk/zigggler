@@ -44,15 +44,20 @@ PM (founder, di tab ini — `w1:t1`) koordinasi via `herdr pane run`, gak langsu
 0. **WAJIB pakai `git worktree`, jangan `git checkout` di direktori utama.** Direktori project ini dipakai bareng-bareng (PM + 4 role). `git checkout <branch>` di direktori utama bisa numpuk/ngerusak kerjaan role lain yang kebetulan lagi pakai direktori yang sama (udah pernah kejadian — edit PM ketimpa). Sebelum mulai fitur baru: `git worktree add ../mouse-jiggler-<role>-<fitur> -b feat/<role>-<fitur> main`, kerja di path worktree itu, bukan di direktori utama.
 1. **Satu fitur = satu branch.** Branch dari `main`, nama: `feat/<role>-<fitur-singkat>` (contoh: `feat/rust-core-uinput-jiggle`, `feat/frontend-ui-theme-picker`).
 2. Kerja di branch itu (lewat worktree-nya) sampai fitur selesai + lolos acceptance criteria di goals ini. Abis PR di-merge, hapus worktree-nya (`git worktree remove ../mouse-jiggler-<role>-<fitur>`).
-3. Commit dengan pesan jelas (conventional commits: `feat:`, `fix:`, `docs:`, dst).
+3. **Commit & PR pakai Bahasa Indonesia gaya app ini** — santai/slang, kompak, bukan bahasa formal korporat. Prefix tipe tetap standar (`feat:`, `fix:`, `docs:`), tapi deskripsinya pakai nada kayak copy app (nge-jig, woles, sat-set, cus, gercep, dst — gak harus pakai kata-kata itu persis, tapi nadanya harus kerasa sama). **Tetap jelas secara teknis**, slang cuma gaya bahasa, substansi gak boleh kabur.
+   - Contoh BENAR: `feat: scaffold tauri + rust-core, project sat-set siap diisi logic`
+   - Contoh BENAR: `fix: idle watcher sempet infinite loop, udah woles sekarang`
+   - Contoh SALAH (terlalu formal): `feat: implement initial Tauri project scaffolding for the Rust core module`
+   - PR description sama: judul singkat gaya app, body tetap lengkap (apa yang berubah, cara test, checklist acceptance criteria) tapi kalimatnya santai.
 4. `git push -u origin <branch>`.
-5. Buka PR ke `main` via `gh pr create` — isi deskripsi: apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
-6. **qa-release** review dulu sebelum merge (kalau qa-release belum spawn/belum sempat, PM review).
-7. Merge ke `main` (squash atau merge commit, konsisten), delete branch abis merge.
-8. **Update `goals/goals.md`** (bagian Status & Log di bawah) — tambah baris baru, JANGAN timpa history lama.
-9. Kalau nemu bug blocking di tengah kerja: jangan diemin, catat di Status & Log dengan tag `[BUG]`, lanjut kerja atau tanya PM via herdr kalau butuh keputusan.
+5. Buka PR ke `main` via `gh pr create` — isi deskripsi (bahasa santai, lihat poin 3): apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
+6. **Sebelum merge, WAJIB cek conflict dulu**: `gh pr view <nomor> --json mergeable -q .mergeable`. Kalau hasilnya `CONFLICTING`: update branch dari main dulu (`git fetch origin && git merge origin/main`, beresin conflict manual), push ulang, baru cek lagi sampai `MERGEABLE`. Jangan maksain merge pas masih conflict.
+7. **qa-release** review dulu sebelum merge (kalau qa-release belum spawn/belum sempat, PM review).
+8. Merge ke `main` (squash atau merge commit, konsisten), delete branch abis merge.
+9. **Update `goals/goals.md`** (bagian Status & Log di bawah) — tambah baris baru, JANGAN timpa history lama.
+10. Kalau nemu bug blocking di tengah kerja: jangan diemin, catat di Status & Log dengan tag `[BUG]`, lanjut kerja atau tanya PM via herdr kalau butuh keputusan.
 
-**Tidak boleh**: commit langsung ke `main`, force push ke `main`, skip PR.
+**Tidak boleh**: commit langsung ke `main`, force push ke `main`, skip PR, merge pas masih conflict, commit/PR message bahasa Inggris formal korporat.
 
 ---
 
