@@ -43,7 +43,7 @@ PM (founder, di tab ini — `w1:t1`) koordinasi via `herdr pane run`, gak langsu
 
 1. **Satu fitur = satu branch.** Branch dari `main`, nama: `feat/<role>-<fitur-singkat>` (contoh: `feat/rust-core-uinput-jiggle`, `feat/frontend-ui-theme-picker`).
 2. Kerja di branch itu sampai fitur selesai + lolos acceptance criteria di goals ini.
-3. Commit dengan pesan jelas (conventional commits: `feat:`, `fix:`, `docs:`, dst).
+3. Commit dengan pesan jelas, gaya profesional (conventional commits: `feat:`, `fix:`, `docs:`, dst). **JANGAN** tambah trailer `Co-Authored-By: Claude...` atau sejenisnya — commit message murni teknis, tanpa atribusi AI.
 4. `git push -u origin <branch>`.
 5. Buka PR ke `main` via `gh pr create` — isi deskripsi: apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
 6. **qa-release** review dulu sebelum merge (kalau qa-release belum spawn/belum sempat, PM review).
@@ -110,5 +110,6 @@ Implementasi kode: pakai trait abstraction (`trait MouseInjector { fn jiggle(&se
 - 2026-10-19 [pm] [DECISION] Scope resmi: P0 Linux/KWin device ini dulu, P1 compositor Linux lain, P2 macOS/Windows. Role di-spawn via herdr tab terpisah (rust-core, frontend-ui, platform-compat, qa-release).
 - 2026-10-19 [pm] [DECISION] Git workflow: branch per fitur (`feat/<role>-<fitur>`), commit → push → PR → review qa-release → merge main → update goals.md.
 - 2026-10-19 [pm] [DECISION] Remote origin URL kena typo (`https:/` → `https://`), udah di-fix sebelum role mulai push.
+- 2026-10-20 [qa-release] [DONE] Setup CI workflow (`.github/workflows/ci.yml`) — `cargo build`/`cargo test` tiap PR + push main, install deps Tauri/webkitgtk, skip gracefully sampai rust-core scaffold Cargo.toml. Plus PR review checklist template (`goals/pr-review-checklist.md`) diturunin dari acceptance criteria § 4. — branch `feat/qa-release-ci-setup`, PR #1.
 
 <!-- Role: tambah entry baru di bawah ini, jangan edit/hapus entry lama -->
