@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Docs internal — lokal doang, jangan ke-push ke remote (cuma README.md yang naik)
+/docs/
