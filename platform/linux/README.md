@@ -5,25 +5,33 @@
 Default state: `/dev/uinput` is `crw------- root:root` (mode 0600) — unprivileged users have
 no access, writes fail with `EACCES`.
 
-Fix: install `99-uinput.rules`, which grants group `input` read/write plus `uaccess` tag
-(logind ACL, covers seat-based access too).
+Fix: install `60-uinput.rules`, which uses **`TAG+="uaccess"` only** — systemd-logind grants
+an ACL on `/dev/uinput` scoped to the active seat session's user. No `GROUP="input"` +
+`usermod -aG input` — that was the first draft and got flagged in security review: group
+`input` owns every `/dev/input/event*` node (real keyboard, real mouse, every HID), so
+adding the user to it is a broad unrelated grant for a feature that only needs
+`/dev/uinput`. `uaccess` scopes the grant to this one device node and nothing else.
+
+**Rule filename matters**: must be numbered lower than `73-seat-late.rules` (the systemd
+rule that runs the `uaccess` builtin on `TAG=="uaccess"`). A `99-*.rules` file sets the tag
+*after* 73 already ran — ACL never applied. `60-uinput.rules` runs before 73, so the tag is
+visible when logind's builtin checks it. Confirmed by testing both orderings on this
+device: `99-` left `/dev/uinput` with no ACL (`crw-rw----`, still not writable by the
+unprivileged user); `60-` produced `crw-rw----+` with `user:<name>:rw-` in `getfacl`.
 
 ```
 sudo platform/linux/install-udev-rule.sh
 ```
 
 What it does:
-1. Copies `99-uinput.rules` to `/etc/udev/rules.d/`.
-2. Reloads/triggers udev rules.
-3. Adds the invoking user to group `input`.
+1. Copies `60-uinput.rules` to `/etc/udev/rules.d/`.
+2. Reloads/triggers udev rules — logind applies the ACL to the active seat session
+   immediately, **no relogin needed**.
 
-**Group membership only takes effect on next login session** (new `id`/`groups` output) —
-log out/in or reboot after running the script, before the app can open `/dev/uinput`.
-
-Verify after relogin:
+Verify:
 ```
-groups        # should list "input"
-ls -l /dev/uinput   # should show group "input", mode 660
+getfacl /dev/uinput   # should show user:<you>:rw-
+test -w /dev/uinput && echo writable
 ```
 
 ## 2. Idle detection protocol — verified, not assumed

@@ -1,39 +1,673 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>zzzzziglerrr</title>
+<style>
+  :root {
+    --bg: #1B1B1E;
+    --ink: #EDEDEF;
+    --muted: #B7B7BE;
+    --card: #26262A;
+    --rule: #38383D;
+    --accent: #5FD3C4;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 300px;
+    height: 300px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+  }
+  ::selection { background: var(--accent); color: #0B1A17; }
 
-  <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+  /* ---- shared app-window chrome ---- */
+  .appwin { position: relative; width: 300px; height: 300px; overflow: hidden; transition: background .2s; display: flex; flex-direction: column; }
+  .appwin canvas.deco { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .titlebar { position: relative; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 7px 10px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .titlebar .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .titlebar .title-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-left: 2px; }
+  .titlebar-actions { margin-left: auto; display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+  .lang-mini { display: flex; gap: 4px; }
+  .lang-chip {
+    appearance: none; border: none; background: transparent; color: inherit;
+    font-size: 9.5px; font-weight: 700; letter-spacing: .03em; padding: 1px 2px;
+    cursor: pointer; opacity: .5;
+  }
+  .lang-chip[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-underline-offset: 2px; }
+  .lang-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .theme-trigger {
+    appearance: none; border: 1px solid rgba(127,127,127,.45); background: transparent;
+    border-radius: 50%; width: 17px; height: 17px; padding: 0; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .theme-trigger-dot { width: 9px; height: 9px; border-radius: 50%; }
+  .theme-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
+  .content { position: relative; z-index: 2; padding: 11px 13px 12px; flex: 1; min-height: 0; overflow: hidden; }
+  .view { display: flex; flex-direction: column; gap: 9px; height: 100%; }
+  .view[hidden] { display: none; }
+
+  .back-btn {
+    appearance: none; border: none; background: transparent; color: inherit;
+    font-size: 11px; font-weight: 700; padding: 0; cursor: pointer; align-self: flex-start; opacity: .75;
+  }
+  .back-btn:hover { opacity: 1; }
+  .theme-view-title { font-size: 11.5px; font-weight: 700; margin: -5px 0 0; }
+  .theme-grid-inapp { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 8px; align-content: start; }
+  .theme-pick { display: flex; flex-direction: column; align-items: center; gap: 3px; cursor: pointer; border: none; background: transparent; padding: 0; }
+  .theme-pick .sw {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent;
+  }
+  .theme-pick[aria-pressed="true"] .sw { border-color: currentColor; }
+  .theme-pick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .theme-pick .nm { font-size: 8.5px; font-weight: 600; line-height: 1.15; text-align: center; opacity: .85; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .label-block .t { font-weight: 700; font-size: 13px; }
+  .label-block .d { font-size: 11px; color: var(--sec); margin-top: 2px; line-height: 1.3; }
+  .idle-copy { font-size: 11.5px; color: var(--sec); }
+
+  .switch { position: relative; width: 40px; height: 22px; cursor: pointer; flex-shrink: 0; }
+  .switch .knob { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; transition: left .2s; }
+  .switch.on .knob { left: 20px; }
+  .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field .t { font-size: 11.5px; font-weight: 700; }
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  input[type="range"] { flex: 1; }
+  input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .val { font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 36px; text-align: right; }
+  .time-pair { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; }
+  .time-pair input { width: 48px; padding: 4px 6px; font-size: 12px; font-weight: 600; text-align: center; font-family: inherit; }
+  .status-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .02em; padding: 4px 8px; width: fit-content; }
+  .status-chip .pulse { width: 6px; height: 6px; border-radius: 50%; animation: chip-pulse 1.8s ease-in-out infinite; }
+  @keyframes chip-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.7); } }
+  @media (prefers-reduced-motion: reduce) { .status-chip .pulse, * { animation: none !important; } }
+
+  .status-row { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .tray-preview { font-size: 9.5px; color: var(--sec); }
+
+  /* ============================================================
+     PIXEL THEMES
+     ============================================================ */
+  .pixelwin { font-family: "Courier New", "Lucida Console", monospace; image-rendering: pixelated; }
+  .pixelwin * { border-radius: 0 !important; }
+  .pixelwin .switch { border-width: 3px; border-style: solid; }
+  .pixelwin .switch .knob { border-radius: 0; }
+  .pixelwin .time-pair { gap: 4px; }
+  .pixelwin .time-pair input { border-width: 2px; border-style: solid; border-radius: 0; width: 56px; padding: 4px 2px; font-size: 10.5px; letter-spacing: -0.5px; }
+  .pixelwin .status-chip { border-width: 2px; border-style: solid; }
+
+  .gameboy { --sec: #0F380F; background: #9BBC0F; color: #0F380F; }
+  .gameboy .titlebar { background: #8BAC0F; border-bottom: 3px solid #0F380F; }
+  .gameboy .titlebar .dot { background: #0F380F; }
+  .gameboy .switch { background: #8BAC0F; border-color: #0F380F; }
+  .gameboy .switch.on { background: #306230; }
+  .gameboy .switch .knob { background: #9BBC0F; border: 3px solid #0F380F; top: 0; left: 0; }
+  .gameboy .switch.on .knob { left: 22px; }
+  .gameboy input[type="range"] { accent-color: #306230; }
+  .gameboy .time-pair input { background: #9BBC0F; border-color: #0F380F; color: #0F380F; }
+  .gameboy .status-chip { background: #0F380F; color: #9BBC0F; border-color: #9BBC0F; }
+  .gameboy .status-chip .pulse { background: #9BBC0F; }
+
+  .nes { --sec: #C7C7C7; background: #121212; color: #FFFFFF; }
+  .nes .titlebar { background: #1E1E1E; border-bottom: 3px solid #FFD500; }
+  .nes .titlebar .dot { background: #E60012; }
+  .nes .switch { background: #1E1E1E; border-color: #FFFFFF; }
+  .nes .switch.on { background: #E60012; }
+  .nes .switch .knob { background: #FFD500; border: 3px solid #FFFFFF; top: 0; left: 0; }
+  .nes .switch.on .knob { left: 22px; }
+  .nes input[type="range"] { accent-color: #0070CC; }
+  .nes .time-pair input { background: #1E1E1E; border-color: #FFFFFF; color: #FFD500; }
+  .nes .status-chip { background: #0070CC; color: #FFFFFF; border-color: #FFFFFF; }
+  .nes .status-chip .pulse { background: #FFD500; }
+
+  .dos { --sec: #B37900; background: #0A0A0A; color: #FFB000; }
+  .dos .titlebar { background: #0A0A0A; border-bottom: 2px solid #FFB000; }
+  .dos .titlebar .dot { background: #FFB000; }
+  .dos .switch { background: #0A0A0A; border-color: #FFB000; }
+  .dos .switch.on { background: #4A3300; }
+  .dos .switch .knob { background: #FFB000; border: 2px solid #0A0A0A; top: 1px; left: 1px; }
+  .dos .switch.on .knob { left: 23px; }
+  .dos input[type="range"] { accent-color: #FFB000; }
+  .dos .time-pair input { background: #0A0A0A; border-color: #FFB000; color: #FFB000; }
+  .dos .status-chip { background: #FFB000; color: #0A0A0A; border-color: #FFB000; }
+  .dos .status-chip .pulse { background: #0A0A0A; }
+
+  /* ============================================================
+     CHROME / METAL / WATER THEMES
+     ============================================================ */
+
+  .glass { --sec: #3E5A6B; background: linear-gradient(160deg, #CFE9F5, #E8F7F2); color: #0B2B40; border-radius: 26px; box-shadow: 0 24px 50px -20px rgba(0,30,50,.5); }
+  .glass .titlebar { background: rgba(255,255,255,.35); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(255,255,255,.5); }
+  .glass .titlebar .dot { background: rgba(11,43,64,.3); }
+  .glass .content { background: rgba(255,255,255,.28); backdrop-filter: blur(14px); }
+  .glass .switch { background: rgba(255,255,255,.4); border-radius: 999px; box-shadow: inset 0 1px 3px rgba(255,255,255,.8), inset 0 -2px 4px rgba(0,60,90,.15); }
+  .glass .switch.on { background: linear-gradient(#5FD3C4, #2BA393); }
+  .glass .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,40,60,.3); }
+  .glass input[type="range"] { accent-color: #2BA393; }
+  .glass .time-pair input { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); border-radius: 8px; color: #0B2B40; }
+  .glass .status-chip { background: rgba(43,163,147,.85); color: #0B2B40; border-radius: 999px; }
+  .glass .status-chip .pulse { background: #fff; }
+
+  .mercury { --sec: #8E95A0; background: #1C1C1E; color: #EDEEF0; border-radius: 20px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.6); }
+  .mercury .titlebar { background: #212125; border-bottom: 1px solid #333338; }
+  .mercury .titlebar .dot { background: radial-gradient(circle at 35% 30%, #D9DDE1, #5A5E64); }
+  .mercury .switch { background: #0F0F11; border-radius: 999px; box-shadow: inset 0 2px 5px rgba(0,0,0,.7); }
+  .mercury .switch.on { background: radial-gradient(circle at 30% 30%, #B9E4F7, #4FC3F7 55%, #1C6A8C); }
+  .mercury .switch .knob { background: radial-gradient(circle at 35% 30%, #F4FBFF, #9FA6AD); border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .mercury input[type="range"] { accent-color: #4FC3F7; }
+  .mercury .time-pair input { background: #0F0F11; border: 1px solid #333338; border-radius: 8px; color: #EDEEF0; }
+  .mercury .status-chip { background: #15607D; color: #fff; border-radius: 999px; }
+  .mercury .status-chip .pulse { background: #fff; }
+
+  .gold { --sec: #B9A47A; background: linear-gradient(160deg, #1C1712, #2A2018); color: #F3E7CE; border-radius: 18px; box-shadow: 0 22px 46px -18px rgba(0,0,0,.6); }
+  .gold .titlebar { background: rgba(0,0,0,.25); border-bottom: 1px solid rgba(244,215,147,.25); }
+  .gold .titlebar .dot { background: radial-gradient(circle at 35% 30%, #F4D793, #8A6A2E); }
+  .gold .switch { background: rgba(255,255,255,.08); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+  .gold .switch.on { background: linear-gradient(135deg, #F4D793, #B8863B 50%, #F4D793); }
+  .gold .switch .knob { background: radial-gradient(circle at 35% 30%, #FFF6E2, #D4AF6A); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .gold input[type="range"] { accent-color: #D4AF6A; }
+  .gold .time-pair input { background: rgba(0,0,0,.3); border: 1px solid rgba(244,215,147,.3); border-radius: 6px; color: #F3E7CE; }
+  .gold .status-chip { background: #6B4F1D; color: #F4D793; border-radius: 999px; }
+  .gold .status-chip .pulse { background: #F4D793; }
+
+  .holo { --sec: #ABA0C9; background: #121018; color: #F0EAF8; border-radius: 20px; box-shadow: 0 22px 46px -18px rgba(0,0,0,.6); }
+  .holo .titlebar { background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.1); }
+  .holo .titlebar .dot { background: linear-gradient(90deg, #7EE8FA, #EEC0F2, #FBD786); }
+  .holo .switch { background: rgba(255,255,255,.08); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+  .holo .switch.on { background: linear-gradient(90deg, #7EE8FA, #B6A4F7, #F7A6C8, #FBD786, #7EE8FA); background-size: 300% 100%; animation: holo-shift 5s linear infinite; }
+  .holo .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .holo input[type="range"] { accent-color: #B6A4F7; }
+  .holo .time-pair input { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; color: #F0EAF8; }
+  .holo .status-chip { background: #4B2E7A; color: #fff; border-radius: 999px; }
+  .holo .status-chip .pulse { background: #fff; }
+  @keyframes holo-shift { 0% { background-position: 0% 0; } 100% { background-position: 300% 0; } }
+
+  .obsidian { --sec: #9089A8; background: #0A0A0C; color: #E7E1F5; border-radius: 24px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.7); }
+  .obsidian .titlebar { background: rgba(255,255,255,.03); border-bottom: 1px solid rgba(124,92,255,.15); }
+  .obsidian .titlebar .dot { background: rgba(124,92,255,.5); }
+  .obsidian .content { background: rgba(255,255,255,.02); }
+  .obsidian .switch { background: rgba(255,255,255,.05); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+  .obsidian .switch.on { background: linear-gradient(#9B7FFF, #7C5CFF); }
+  .obsidian .switch .knob { background: #F3F0FF; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .obsidian input[type="range"] { accent-color: #7C5CFF; }
+  .obsidian .time-pair input { background: rgba(255,255,255,.04); border: 1px solid rgba(124,92,255,.2); border-radius: 8px; color: #E7E1F5; }
+  .obsidian .status-chip { background: #2E1F55; color: #E7E1F5; border-radius: 999px; }
+  .obsidian .status-chip .pulse { background: #E7E1F5; }
+
+  .sketchbook { --sec: #5A5548; background: #ECE6D6; color: #2E2B26; border-radius: 14px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.28); }
+  .sketchbook .titlebar .dot:nth-child(1){ background:#D1495B; }
+  .sketchbook .titlebar .dot:nth-child(2){ background:#E8B13A; }
+  .sketchbook .titlebar .dot:nth-child(3){ background:#58A4B0; }
+  .sketchbook .switch { background: #DCD4BD; border: 2px solid #2E2B26; border-radius: 999px; }
+  .sketchbook .switch.on { background: #D1495B; }
+  .sketchbook .switch .knob { background: #ECE6D6; border: 2px solid #2E2B26; border-radius: 50%; }
+  .sketchbook input[type="range"] { accent-color: #D1495B; }
+  .sketchbook .time-pair input { background: #fff; border: 2px solid #2E2B26; border-radius: 8px; color: #2E2B26; }
+  .sketchbook .status-chip { background: #2A6E79; color: #fff; border-radius: 999px; }
+  .sketchbook .status-chip .pulse { background: #fff; }
+
+  .blob { --sec: #746C7D; background: #FBF6FB; color: #4A4453; border-radius: 20px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.22); }
+  .blob .titlebar .dot { background: #E7DCEB; }
+  .blob .switch { background: #EAE0ED; border-radius: 999px; }
+  .blob .switch.on { background: #E98074; }
+  .blob .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,.15); }
+  .blob input[type="range"] { accent-color: #E98074; }
+  .blob .time-pair input { background: #fff; border: none; border-radius: 8px; color: #4A4453; box-shadow: inset 0 0 0 1px #E7DCEB; }
+  .blob .status-chip { background: #BFE3C8; color: #2E4A33; border-radius: 999px; }
+  .blob .status-chip .pulse { background: #2E4A33; }
+
+  .comic { --sec: #4A4A4A; background: #FFFFFF; color: #121212; border-radius: 10px; box-shadow: 0 18px 40px -16px rgba(0,0,0,.3); }
+  .comic .titlebar { border-bottom: 3px solid #121212; }
+  .comic .titlebar .dot { background: #121212; }
+  .comic .switch { background: #fff; border: 3px solid #121212; border-radius: 999px; }
+  .comic .switch.on { background: #FFD23F; }
+  .comic .switch .knob { background: #121212; border-radius: 50%; }
+  .comic input[type="range"] { accent-color: #E63946; }
+  .comic .time-pair input { background: #fff; border: 3px solid #121212; color: #121212; border-radius: 4px; }
+  .comic .status-chip { background: #1F6E90; color: #fff; border: 2px solid #121212; border-radius: 6px; }
+  .comic .status-chip .pulse { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="appwin gameboy" id="appwin">
+    <canvas class="deco" id="deco"></canvas>
+    <div class="titlebar">
+      <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+      <span class="title-text">zzzzziglerrr</span>
+      <div class="titlebar-actions">
+        <div class="lang-mini" role="group" aria-label="bahasa">
+          <button class="lang-chip" data-lang="id" aria-pressed="true">ID</button>
+          <button class="lang-chip" data-lang="en" aria-pressed="false">EN</button>
+          <button class="lang-chip" data-lang="ja" aria-pressed="false">WB</button>
+        </div>
+        <button class="theme-trigger" id="themeOpenBtn" aria-label="pilih tema" title="pilih tema">
+          <span class="theme-trigger-dot" id="themeTriggerDot" style="background:#0F380F;"></span>
+        </button>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+    </div>
+    <div class="content">
+      <div class="view" id="viewMain">
+        <div class="row">
+          <div class="label-block">
+            <div class="t" id="jiggleLabel"></div>
+            <div class="d" id="jiggleDesc"></div>
+          </div>
+          <div class="switch on" id="mainSwitch" role="switch" aria-checked="true" tabindex="0"><div class="knob"></div></div>
+        </div>
+        <div class="field">
+          <div class="t" id="intervalLabel"></div>
+          <div class="slider-row"><input type="range" id="intervalSlider" min="5" max="120" value="45"><span class="val" id="intervalVal">45s</span></div>
+        </div>
+        <div class="field">
+          <div class="t" id="scheduleLabel"></div>
+          <div class="time-pair"><input id="scheduleStart" value="09:00"> — <input id="scheduleEnd" value="17:00"></div>
+        </div>
+        <div class="field">
+          <div class="t" id="idleLabelT"></div>
+          <div class="row"><span class="idle-copy" id="idleDesc"></span>
+            <div class="switch on" id="idleSwitch" role="switch" aria-checked="true" tabindex="0"><div class="knob"></div></div>
+          </div>
+        </div>
+        <div class="status-row">
+          <span class="status-chip" id="statusChip"><span class="pulse"></span><span id="statusChipText"></span></span>
+          <span class="tray-preview" id="trayPreview"></span>
+        </div>
+      </div>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
-  </body>
+      <div class="view" id="viewTheme" hidden>
+        <button class="back-btn" id="themeBackBtn">‹ <span id="backLabel">balik</span></button>
+        <div class="theme-view-title" id="themeViewTitle">pilih tema</div>
+        <div class="theme-grid-inapp" id="themeGridInApp" role="group" aria-label="pilih tema"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  var THEMES = [
+    { cls: "gameboy", extra: "pixelwin", swatch: "#0F380F", name: { id: "game boy", en: "Game Boy", ja: "Game Boy" } },
+    { cls: "nes", extra: "pixelwin", swatch: "#E60012", name: { id: "nes arcade", en: "NES Arcade", ja: "NES Arcade" } },
+    { cls: "dos", extra: "pixelwin", swatch: "#FFB000", name: { id: "dos phosphor", en: "DOS Phosphor", ja: "DOS Phosphor" } },
+    { cls: "mercury", extra: "", swatch: "#4FC3F7", name: { id: "mercury", en: "Mercury", ja: "Mercury" } },
+    { cls: "gold", extra: "", swatch: "#D4AF6A", name: { id: "gold", en: "Gold", ja: "Gold" } },
+    { cls: "obsidian", extra: "", swatch: "#7C5CFF", name: { id: "obsidian glass", en: "Obsidian Glass", ja: "Obsidian Glass" } },
+    { cls: "glass", extra: "", swatch: "#2BA393", name: { id: "liquid glass", en: "Liquid Glass", ja: "Liquid Glass" } },
+    { cls: "holo", extra: "", swatch: "#B6A4F7", name: { id: "holographic", en: "Holographic", ja: "Holographic" } },
+    { cls: "sketchbook", extra: "", swatch: "#D1495B", name: { id: "sketchbook", en: "Sketchbook", ja: "Sketchbook" } },
+    { cls: "blob", extra: "", swatch: "#E98074", name: { id: "pastel blob", en: "Pastel Blob", ja: "Pastel Blob" } },
+    { cls: "comic", extra: "", swatch: "#FFD23F", name: { id: "comic outline", en: "Comic Outline", ja: "Comic Outline" } }
+  ];
+  var THEME_BY_CLS = {};
+  THEMES.forEach(function(t, i){ THEME_BY_CLS[t.cls] = i; });
+
+  var DICT = {
+    id: {
+      jiggleLabel: "lagi nge-jig",
+      jiggleDesc: function(n){ return "tiap " + n + "s, biar online mulu"; },
+      intervalLabel: "berapa detik sih",
+      scheduleLabel: "jam gasnya",
+      idleLabelT: "nge-jig pas nganggur aja",
+      idleDesc: "anteng kalau lo pegang mouse",
+      themeViewTitle: "cari tema",
+      backLabel: "cus balik",
+      chipOn: "lagi nge-jig",
+      chipOff: "woles dulu",
+      trayOn: "tray: nyala",
+      trayOff: "tray: woles"
+    },
+    en: {
+      jiggleLabel: "jigglin'",
+      jiggleDesc: function(n){ return "every " + n + "s, keeps you looking online"; },
+      intervalLabel: "how often",
+      scheduleLabel: "active hours",
+      idleLabelT: "jiggle only when idle",
+      idleDesc: "stays quiet while you're using the mouse",
+      themeViewTitle: "pick a theme",
+      backLabel: "back",
+      chipOn: "jigglin'",
+      chipOff: "off",
+      trayOn: "tray: on",
+      trayOff: "tray: off"
+    },
+    ja: {
+      jiggleLabel: "ジグってる",
+      jiggleDesc: function(n){ return n + "秒おきに動く、オンラインっぽく見せる"; },
+      intervalLabel: "どのくらいの頻度",
+      scheduleLabel: "動く時間",
+      idleLabelT: "離席中だけジグる",
+      idleDesc: "マウス触ってる時は邪魔しない",
+      themeViewTitle: "テーマを選ぶ",
+      backLabel: "戻る",
+      chipOn: "ジグってる",
+      chipOff: "オフ",
+      trayOn: "トレイ: オン",
+      trayOff: "トレイ: オフ"
+    }
+  };
+
+  var DEFAULT_CONFIG = {
+    theme: "gameboy",
+    locale: "id",
+    interval_secs: 45,
+    schedule_start: "09:00",
+    schedule_end: "17:00",
+    idle_only: true,
+    jiggle_on: true
+  };
+
+  var config = Object.assign({}, DEFAULT_CONFIG);
+
+  var tauriInvoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) || null;
+  if (!tauriInvoke) {
+    console.warn("zzzzziglerrr: Tauri bridge not found, running with in-memory config only (dev preview mode).");
+  }
+
+  function invoke(cmd, args) {
+    if (!tauriInvoke) return Promise.resolve(null);
+    return tauriInvoke(cmd, args).catch(function(err){
+      console.error("zzzzziglerrr: invoke(" + cmd + ") failed", err);
+      return null;
+    });
+  }
+
+  function persistConfig() {
+    invoke("set_config", { config: config });
+  }
+
+  var appwin = document.getElementById("appwin");
+  var deco = document.getElementById("deco");
+
+  function applyTheme(i, skipPersist) {
+    var t = THEMES[i];
+    config.theme = t.cls;
+    appwin.className = "appwin " + t.cls + (t.extra ? " " + t.extra : "");
+    deco.setAttribute("data-kind", t.cls);
+    document.getElementById("themeTriggerDot").style.background = t.swatch;
+    document.querySelectorAll(".theme-pick").forEach(function(btn, idx){
+      btn.setAttribute("aria-pressed", idx === i ? "true" : "false");
+    });
+    renderDeco();
+    if (!skipPersist) persistConfig();
+  }
+
+  function applyLocale(locale, skipPersist) {
+    config.locale = locale;
+    var d = DICT[locale];
+    document.getElementById("jiggleLabel").textContent = d.jiggleLabel;
+    document.getElementById("jiggleDesc").textContent = d.jiggleDesc(config.interval_secs);
+    document.getElementById("intervalLabel").textContent = d.intervalLabel;
+    document.getElementById("scheduleLabel").textContent = d.scheduleLabel;
+    document.getElementById("idleLabelT").textContent = d.idleLabelT;
+    document.getElementById("idleDesc").textContent = d.idleDesc;
+    document.getElementById("themeViewTitle").textContent = d.themeViewTitle;
+    document.getElementById("backLabel").textContent = d.backLabel;
+    document.querySelectorAll(".theme-pick .nm").forEach(function(span, idx){
+      span.textContent = THEMES[idx].name[locale];
+    });
+    updateChip();
+    document.querySelectorAll(".lang-chip").forEach(function(btn){
+      btn.setAttribute("aria-pressed", btn.getAttribute("data-lang") === locale ? "true" : "false");
+    });
+    document.documentElement.setAttribute("lang", locale);
+    if (!skipPersist) persistConfig();
+  }
+
+  function updateChip() {
+    var d = DICT[config.locale];
+    document.getElementById("statusChipText").textContent = config.jiggle_on ? d.chipOn : d.chipOff;
+    document.getElementById("statusChip").style.opacity = config.jiggle_on ? "1" : ".6";
+    document.getElementById("trayPreview").textContent = "● " + (config.jiggle_on ? d.trayOn : d.trayOff);
+  }
+
+  function applyConfigToUi(skipPersist) {
+    applyTheme(THEME_BY_CLS[config.theme] || 0, true);
+    applyLocale(config.locale, true);
+    document.getElementById("intervalSlider").value = config.interval_secs;
+    document.getElementById("intervalVal").textContent = config.interval_secs + "s";
+    document.getElementById("scheduleStart").value = config.schedule_start;
+    document.getElementById("scheduleEnd").value = config.schedule_end;
+    setSwitch(idleSwitch, config.idle_only);
+    setSwitch(mainSwitch, config.jiggle_on);
+    updateChip();
+  }
+
+  function setSwitch(el, on) {
+    el.classList.toggle("on", on);
+    el.setAttribute("aria-checked", on ? "true" : "false");
+  }
+
+  var viewMain = document.getElementById("viewMain");
+  var viewTheme = document.getElementById("viewTheme");
+  var themeGridInApp = document.getElementById("themeGridInApp");
+
+  THEMES.forEach(function(t, i){
+    var btn = document.createElement("button");
+    btn.className = "theme-pick";
+    btn.setAttribute("aria-pressed", "false");
+    btn.setAttribute("title", t.name.en);
+    var sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = t.swatch;
+    var nm = document.createElement("span");
+    nm.className = "nm";
+    nm.textContent = t.name.id;
+    btn.appendChild(sw);
+    btn.appendChild(nm);
+    btn.addEventListener("click", function(){
+      applyTheme(i);
+      viewTheme.hidden = true;
+      viewMain.hidden = false;
+    });
+    themeGridInApp.appendChild(btn);
+  });
+
+  document.getElementById("themeOpenBtn").addEventListener("click", function(){
+    viewMain.hidden = true;
+    viewTheme.hidden = false;
+  });
+  document.getElementById("themeBackBtn").addEventListener("click", function(){
+    viewTheme.hidden = true;
+    viewMain.hidden = false;
+  });
+
+  document.querySelectorAll(".lang-chip").forEach(function(btn){
+    btn.addEventListener("click", function(){ applyLocale(btn.getAttribute("data-lang")); });
+  });
+
+  var mainSwitch = document.getElementById("mainSwitch");
+  mainSwitch.addEventListener("click", function(){
+    invoke("toggle_jiggle").then(function(result){
+      var on = typeof result === "boolean" ? result : !config.jiggle_on;
+      config.jiggle_on = on;
+      setSwitch(mainSwitch, on);
+      updateChip();
+    });
+  });
+  mainSwitch.addEventListener("keydown", function(e){
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); mainSwitch.click(); }
+  });
+
+  var idleSwitch = document.getElementById("idleSwitch");
+  idleSwitch.addEventListener("click", function(){
+    var on = !idleSwitch.classList.contains("on");
+    setSwitch(idleSwitch, on);
+    config.idle_only = on;
+    persistConfig();
+  });
+  idleSwitch.addEventListener("keydown", function(e){
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); idleSwitch.click(); }
+  });
+
+  var slider = document.getElementById("intervalSlider");
+  slider.addEventListener("input", function(){
+    config.interval_secs = Number(slider.value);
+    document.getElementById("intervalVal").textContent = slider.value + "s";
+    document.getElementById("jiggleDesc").textContent = DICT[config.locale].jiggleDesc(config.interval_secs);
+  });
+  slider.addEventListener("change", persistConfig);
+
+  var scheduleStart = document.getElementById("scheduleStart");
+  var scheduleEnd = document.getElementById("scheduleEnd");
+  function onScheduleChange(){
+    config.schedule_start = scheduleStart.value;
+    config.schedule_end = scheduleEnd.value;
+    persistConfig();
+  }
+  scheduleStart.addEventListener("change", onScheduleChange);
+  scheduleEnd.addEventListener("change", onScheduleChange);
+
+  function seededRandom(seed) {
+    var s = seed;
+    return function() { s = (s * 1103515245 + 12345) & 0x7fffffff; return (s % 1000) / 1000; };
+  }
+
+  function glintRadial(ctx, t, period, baseX, baseY, orbitR, inner, mid, outer, radius) {
+    var ang = ((t || 0) / period) * Math.PI * 2;
+    var cx = baseX + Math.cos(ang) * orbitR, cy = baseY + Math.sin(ang) * orbitR * 0.6;
+    var grad = ctx.createRadialGradient(cx - radius * 0.2, cy - radius * 0.2, radius * 0.05, cx, cy, radius);
+    grad.addColorStop(0, inner); grad.addColorStop(0.5, mid); grad.addColorStop(1, outer);
+    ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawPixelGrid(ctx, w, h, size, color, alpha) {
+    ctx.strokeStyle = color; ctx.globalAlpha = alpha; ctx.lineWidth = 1;
+    for (var x = 0; x <= w; x += size) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (var y = 0; y <= h; y += size) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  function sketchyRoundRect(ctx, x, y, w, h, r, rand, passes, color, lineWidth) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    for (var p = 0; p < passes; p++) {
+      ctx.beginPath();
+      var jig = function(v, amp) { return v + (rand() - 0.5) * amp; };
+      var amp = 1.4;
+      ctx.moveTo(jig(x + r, amp), jig(y, amp));
+      ctx.lineTo(jig(x + w - r, amp), jig(y, amp));
+      ctx.quadraticCurveTo(jig(x + w, amp), jig(y, amp), jig(x + w, amp), jig(y + r, amp));
+      ctx.lineTo(jig(x + w, amp), jig(y + h - r, amp));
+      ctx.quadraticCurveTo(jig(x + w, amp), jig(y + h, amp), jig(x + w - r, amp), jig(y + h, amp));
+      ctx.lineTo(jig(x + r, amp), jig(y + h, amp));
+      ctx.quadraticCurveTo(jig(x, amp), jig(y + h, amp), jig(x, amp), jig(y + h - r, amp));
+      ctx.lineTo(jig(x, amp), jig(y + r, amp));
+      ctx.quadraticCurveTo(jig(x, amp), jig(y, amp), jig(x + r, amp), jig(y, amp));
+      ctx.stroke();
+    }
+  }
+
+  function drawSketchbook(ctx, w, h) {
+    var rand = seededRandom(7);
+    ctx.clearRect(0, 0, w, h);
+    sketchyRoundRect(ctx, 8, 40, w - 16, h - 54, 12, rand, 2, "#2E2B26", 1.2);
+    ctx.save(); ctx.translate(w - 32, 8); ctx.rotate(0.18);
+    ctx.fillStyle = "rgba(216,196,120,0.55)"; ctx.fillRect(-10, -5, 20, 15);
+    ctx.restore();
+    ctx.save(); ctx.translate(22, h - 14); ctx.rotate(-0.12);
+    ctx.fillStyle = "rgba(88,164,176,0.4)"; ctx.fillRect(-10, -5, 19, 13);
+    ctx.restore();
+  }
+
+  function drawBlob(ctx, w, h) {
+    var rand = seededRandom(3);
+    ctx.clearRect(0, 0, w, h);
+    function blob(cx, cy, r, color) {
+      ctx.beginPath();
+      var pts = 10;
+      for (var i = 0; i <= pts; i++) {
+        var a = (i / pts) * Math.PI * 2;
+        var rr = r * (0.82 + rand() * 0.3);
+        var x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath(); ctx.fillStyle = color; ctx.fill();
+    }
+    blob(w - 44, 110, 64, "rgba(243,182,194,0.35)");
+    blob(38, h - 90, 58, "rgba(191,227,200,0.4)");
+    blob(w - 30, h - 44, 42, "rgba(246,227,161,0.4)");
+  }
+
+  function drawComic(ctx, w, h) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "rgba(18,18,18,0.07)";
+    var step = 11;
+    for (var yy = 44; yy < h; yy += step) {
+      for (var xx = (yy / step % 2 === 0) ? 0 : step / 2; xx < w; xx += step) {
+        ctx.beginPath(); ctx.arc(xx, yy, 1.6, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  var renderers = {
+    gameboy: function(ctx,w,h){ ctx.clearRect(0,0,w,h); drawPixelGrid(ctx,w,h,8,"#0F380F",0.08); },
+    nes: function(ctx,w,h){ ctx.clearRect(0,0,w,h); drawPixelGrid(ctx,w,h,10,"#FFFFFF",0.04); },
+    dos: function(ctx,w,h,t){ ctx.clearRect(0,0,w,h); ctx.strokeStyle="#FFB000"; ctx.globalAlpha=0.05; for (var y=(t||0)%3;y<h;y+=3){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();} ctx.globalAlpha=1; },
+    glass: function(ctx,w,h,t){
+      ctx.clearRect(0,0,w,h);
+      var ang=((t||0)/9000)*Math.PI*2, hx=w*0.72+Math.cos(ang)*20, hy=h*0.1+Math.sin(ang)*12;
+      var grad=ctx.createRadialGradient(hx,hy,10,hx,hy,w*0.6);
+      grad.addColorStop(0,"rgba(255,255,255,.55)"); grad.addColorStop(1,"rgba(255,255,255,0)");
+      ctx.fillStyle=grad; ctx.fillRect(0,0,w,h);
+      var grad2=ctx.createLinearGradient(0,0,w,h);
+      grad2.addColorStop(0,"rgba(176,224,255,.4)"); grad2.addColorStop(1,"rgba(95,211,196,.25)");
+      ctx.globalCompositeOperation="destination-over"; ctx.fillStyle=grad2; ctx.fillRect(0,0,w,h); ctx.globalCompositeOperation="source-over";
+    },
+    mercury: function(ctx,w,h,t){
+      ctx.clearRect(0,0,w,h);
+      var cx=w*0.72+Math.sin((t||0)/2200)*14, cy=h*0.22+Math.cos((t||0)/2600)*10;
+      var grad=ctx.createRadialGradient(cx-18,cy-18,4,cx,cy,80);
+      grad.addColorStop(0,"rgba(220,235,245,.55)"); grad.addColorStop(0.5,"rgba(79,195,247,.22)"); grad.addColorStop(1,"rgba(79,195,247,0)");
+      ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(cx,cy,80,0,Math.PI*2); ctx.fill();
+    },
+    gold: function(ctx,w,h,t){ ctx.clearRect(0,0,w,h); glintRadial(ctx,t,7000,w*0.6,h*0.25,40,"rgba(255,246,226,.5)","rgba(244,215,147,.22)","rgba(244,215,147,0)",95); },
+    obsidian: function(ctx,w,h,t){ ctx.clearRect(0,0,w,h); glintRadial(ctx,t,8000,w*0.55,h*0.2,35,"rgba(230,220,255,.4)","rgba(124,92,255,.18)","rgba(124,92,255,0)",90); },
+    sketchbook: drawSketchbook,
+    blob: drawBlob,
+    comic: drawComic
+  };
+  var animatedKinds = { dos:1, glass:1, mercury:1, gold:1, obsidian:1 };
+
+  function renderDeco() {
+    var kind = deco.getAttribute("data-kind");
+    var fn = renderers[kind];
+    if (!fn) { deco.getContext("2d").clearRect(0,0,deco.width,deco.height); return; }
+    var rect = deco.getBoundingClientRect();
+    if (rect.width === 0) return;
+    var dpr = window.devicePixelRatio || 1;
+    deco.width = rect.width * dpr; deco.height = rect.height * dpr;
+    var ctx = deco.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fn(ctx, rect.width, rect.height, lastT);
+  }
+
+  var lastT = 0;
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tick(ts) {
+    lastT = ts;
+    var kind = deco.getAttribute("data-kind");
+    if (animatedKinds[kind] && !reduceMotion) renderDeco();
+    requestAnimationFrame(tick);
+  }
+
+  window.addEventListener("resize", renderDeco);
+
+  invoke("get_config").then(function(loaded){
+    if (loaded) config = Object.assign({}, DEFAULT_CONFIG, loaded);
+    applyConfigToUi();
+    renderDeco();
+    setTimeout(renderDeco, 50);
+    requestAnimationFrame(tick);
+  });
+})();
+</script>
+</body>
 </html>
