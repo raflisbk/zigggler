@@ -1,5 +1,7 @@
 mod config;
+mod idle_watcher;
 mod mouse_injector;
+mod scheduler;
 
 use config::Config;
 use mouse_injector::MouseInjector;
@@ -34,6 +36,7 @@ fn toggle_jiggle(state: tauri::State<AppState>) -> bool {
 
 #[cfg(target_os = "linux")]
 fn spawn_jiggle_loop(jiggling: Arc<AtomicBool>, config: Arc<Mutex<Config>>) {
+    use idle_watcher::{IdleWatcher, WaylandIdleWatcher};
     use mouse_injector::UinputInjector;
 
     std::thread::spawn(move || {
@@ -44,10 +47,31 @@ fn spawn_jiggle_loop(jiggling: Arc<AtomicBool>, config: Arc<Mutex<Config>>) {
                 return;
             }
         };
+        let idle_watcher = WaylandIdleWatcher::spawn();
+        if idle_watcher.is_none() {
+            eprintln!(
+                "zzzzziglerrr: compositor gak dukung ext-idle-notify-v1, idle_only diabaikan"
+            );
+        }
+
         loop {
-            let interval_secs = config.lock().expect("config mutex poisoned").interval_secs;
+            let (interval_secs, schedule_start, schedule_end, idle_only) = {
+                let config = config.lock().expect("config mutex poisoned");
+                (
+                    config.interval_secs,
+                    config.schedule_start.clone(),
+                    config.schedule_end.clone(),
+                    config.idle_only,
+                )
+            };
             std::thread::sleep(Duration::from_secs(interval_secs.max(1)));
-            if jiggling.load(Ordering::SeqCst) {
+
+            if !jiggling.load(Ordering::SeqCst) {
+                continue;
+            }
+            let in_schedule = scheduler::is_within_schedule(&schedule_start, &schedule_end);
+            let idle_seconds = idle_watcher.as_ref().map_or(0, |w| w.idle_seconds());
+            if scheduler::should_jiggle(in_schedule, idle_only, idle_seconds) {
                 injector.jiggle();
             }
         }
