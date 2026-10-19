@@ -41,8 +41,9 @@ PM (founder, di tab ini — `w1:t1`) koordinasi via `herdr pane run`, gak langsu
 
 ## 2. Git Workflow (WAJIB diikuti semua role)
 
+0. **WAJIB pakai `git worktree`, jangan `git checkout` di direktori utama.** Direktori project ini dipakai bareng-bareng (PM + 4 role). `git checkout <branch>` di direktori utama bisa numpuk/ngerusak kerjaan role lain yang kebetulan lagi pakai direktori yang sama (udah pernah kejadian — edit PM ketimpa). Sebelum mulai fitur baru: `git worktree add ../mouse-jiggler-<role>-<fitur> -b feat/<role>-<fitur> main`, kerja di path worktree itu, bukan di direktori utama.
 1. **Satu fitur = satu branch.** Branch dari `main`, nama: `feat/<role>-<fitur-singkat>` (contoh: `feat/rust-core-uinput-jiggle`, `feat/frontend-ui-theme-picker`).
-2. Kerja di branch itu sampai fitur selesai + lolos acceptance criteria di goals ini.
+2. Kerja di branch itu (lewat worktree-nya) sampai fitur selesai + lolos acceptance criteria di goals ini. Abis PR di-merge, hapus worktree-nya (`git worktree remove ../mouse-jiggler-<role>-<fitur>`).
 3. Commit dengan pesan jelas (conventional commits: `feat:`, `fix:`, `docs:`, dst).
 4. `git push -u origin <branch>`.
 5. Buka PR ke `main` via `gh pr create` — isi deskripsi: apa yang berubah, cara test manual, checklist acceptance criteria yang kecentang.
