@@ -1,0 +1,861 @@
+<title>zzzzziglerrr — Pixel &amp; Chrome Mockups</title>
+<style>
+  :root {
+    --bg: #1B1B1E;
+    --ink: #EDEDEF;
+    --muted: #B7B7BE;
+    --card: #26262A;
+    --rule: #38383D;
+    --accent: #5FD3C4;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    overflow-x: hidden;
+  }
+  body { padding: 48px 24px 90px; }
+  ::selection { background: var(--accent); color: #0B1A17; }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  h1 {
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 10px;
+    text-wrap: balance;
+  }
+  .lede {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0 0 40px;
+  }
+
+  section.gallery { margin-bottom: 56px; }
+  section.gallery h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  section.gallery .sub {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 20px;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 18px;
+  }
+  .tab {
+    appearance: none;
+    border: 1px solid var(--rule);
+    background: var(--card);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .tab:hover { border-color: var(--accent); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tab[aria-selected="true"] {
+    background: var(--accent);
+    color: #0B1A17;
+    border-color: var(--accent);
+  }
+  .tab .swatch-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 7px;
+    vertical-align: -1px;
+  }
+
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0,1fr) 300px;
+    gap: 36px;
+    align-items: start;
+  }
+  @media (max-width: 820px) { .stage { grid-template-columns: 1fr; } }
+
+  .frame-holder { display: flex; justify-content: center; padding: 10px 0; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .notes p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .notes ul {
+    margin: 0 0 14px;
+    padding-left: 18px;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .notes li { margin-bottom: 6px; }
+  .swatches { display: flex; gap: 6px; margin-top: 14px; }
+  .swatch {
+    width: 26px; height: 26px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.12);
+    flex-shrink: 0;
+  }
+
+  /* ---- shared app-window chrome ---- */
+  .appwin {
+    position: relative;
+    width: 380px;
+    min-height: 540px;
+    overflow: hidden;
+  }
+  .appwin canvas.deco {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  .titlebar {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+  }
+  .titlebar .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .content {
+    position: relative;
+    z-index: 2;
+    padding: 16px 20px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 17px;
+  }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .label-block .t { font-weight: 700; font-size: 14px; }
+  .label-block .d { font-size: 12px; color: var(--sec); margin-top: 2px; }
+  .idle-copy { font-size: 12.5px; color: var(--sec); }
+
+  .switch {
+    position: relative;
+    width: 50px; height: 28px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .switch .knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; transition: left .2s; }
+  .switch.on .knob { left: 25px; }
+  .switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field .t { font-size: 12.5px; font-weight: 700; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  input[type="range"] { flex: 1; }
+  input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .val { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; }
+  .time-pair { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+  .time-pair input { width: 58px; padding: 6px 8px; font-size: 13px; font-weight: 600; text-align: center; font-family: inherit; }
+  .status-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+    padding: 5px 10px; width: fit-content;
+  }
+  .status-chip .pulse {
+    width: 7px; height: 7px; border-radius: 50%;
+    animation: chip-pulse 1.8s ease-in-out infinite;
+  }
+  @keyframes chip-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: .4; transform: scale(.7); }
+  }
+  @media (prefers-reduced-motion: reduce) { .status-chip .pulse { animation: none; } }
+  .tray-preview { margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--sec); padding-top: 8px; }
+
+  /* ============================================================
+     PIXEL WORLD — shared retro rules
+     ============================================================ */
+  .pixelwin { font-family: "Courier New", "Lucida Console", monospace; image-rendering: pixelated; }
+  .pixelwin * { border-radius: 0 !important; }
+  .pixelwin .switch { border-width: 3px; border-style: solid; }
+  .pixelwin .switch .knob { border-radius: 0; }
+  .pixelwin .time-pair input { border-width: 2px; border-style: solid; border-radius: 0; }
+  .pixelwin .status-chip { border-width: 2px; border-style: solid; }
+
+  /* 1. Game Boy DMG */
+  .gameboy { --sec: #0F380F; background: #9BBC0F; color: #0F380F; }
+  .gameboy .titlebar { background: #8BAC0F; border-bottom: 3px solid #0F380F; }
+  .gameboy .titlebar .dot { background: #0F380F; }
+  .gameboy .switch { background: #8BAC0F; border-color: #0F380F; }
+  .gameboy .switch.on { background: #306230; }
+  .gameboy .switch .knob { background: #9BBC0F; border: 3px solid #0F380F; top: 0; left: 0; }
+  .gameboy .switch.on .knob { left: 22px; }
+  .gameboy input[type="range"] { accent-color: #306230; }
+  .gameboy .time-pair input { background: #9BBC0F; border-color: #0F380F; color: #0F380F; }
+  .gameboy .status-chip { background: #0F380F; color: #9BBC0F; border-color: #9BBC0F; }
+  .gameboy .status-chip .pulse { background: #9BBC0F; }
+
+  /* 2. NES Arcade */
+  .nes { --sec: #C7C7C7; background: #121212; color: #FFFFFF; }
+  .nes .titlebar { background: #1E1E1E; border-bottom: 3px solid #FFD500; }
+  .nes .titlebar .dot { background: #E60012; }
+  .nes .label-block .t { text-transform: uppercase; letter-spacing: .03em; }
+  .nes .switch { background: #1E1E1E; border-color: #FFFFFF; }
+  .nes .switch.on { background: #E60012; }
+  .nes .switch .knob { background: #FFD500; border: 3px solid #FFFFFF; top: 0; left: 0; }
+  .nes .switch.on .knob { left: 22px; }
+  .nes input[type="range"] { accent-color: #0070CC; }
+  .nes .time-pair input { background: #1E1E1E; border-color: #FFFFFF; color: #FFD500; }
+  .nes .status-chip { background: #0070CC; color: #FFFFFF; border-color: #FFFFFF; }
+  .nes .status-chip .pulse { background: #FFD500; }
+
+  /* 3. DOS Phosphor */
+  .dos { --sec: #B37900; background: #0A0A0A; color: #FFB000; }
+  .dos .titlebar { background: #0A0A0A; border-bottom: 2px solid #FFB000; }
+  .dos .titlebar .dot { background: #FFB000; }
+  .dos .label-block .t { text-transform: uppercase; }
+  .dos .switch { background: #0A0A0A; border-color: #FFB000; }
+  .dos .switch.on { background: #4A3300; }
+  .dos .switch .knob { background: #FFB000; border: 2px solid #0A0A0A; top: 1px; left: 1px; }
+  .dos .switch.on .knob { left: 23px; }
+  .dos input[type="range"] { accent-color: #FFB000; }
+  .dos .time-pair input { background: #0A0A0A; border-color: #FFB000; color: #FFB000; }
+  .dos .status-chip { background: #FFB000; color: #0A0A0A; border-color: #FFB000; }
+  .dos .status-chip .pulse { background: #0A0A0A; }
+
+  /* 4. Windows 95 */
+  .win95 { --sec: #4A4A4A; background: #C0C0C0; color: #000000; font-family: "Segoe UI", Tahoma, sans-serif; }
+  .win95 .titlebar { background: #000080; color: #fff; }
+  .win95 .titlebar .dot { background: #fff; }
+  .win95 .switch { background: #C0C0C0; box-shadow: inset -2px -2px 0 #000, inset 2px 2px 0 #fff, inset -4px -4px 0 #808080, inset 4px 4px 0 #dfdfdf; }
+  .win95 .switch.on { background: #008080; }
+  .win95 .switch .knob { background: #C0C0C0; box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #fff; top: 2px; left: 2px; }
+  .win95 .switch.on .knob { left: 24px; }
+  .win95 input[type="range"] { accent-color: #000080; }
+  .win95 .time-pair input { background: #fff; border: none; box-shadow: inset -1px -1px 0 #fff, inset 1px 1px 0 #808080; color: #000; }
+  .win95 .status-chip { background: #008080; color: #fff; border: none; box-shadow: inset -1px -1px 0 #004040, inset 1px 1px 0 #00b0b0; }
+  .win95 .status-chip .pulse { background: #fff; }
+
+  /* 5. Vaporwave Pixel */
+  .vapor { --sec: #C9A6E0; background: #1A0B2E; color: #F2E9FF; }
+  .vapor .titlebar { background: #2D1448; border-bottom: 3px solid #E33E9E; }
+  .vapor .titlebar .dot { background: #3EE6E3; }
+  .vapor .switch { background: #2D1448; border-color: #E33E9E; }
+  .vapor .switch.on { background: #E33E9E; }
+  .vapor .switch .knob { background: #3EE6E3; border: 3px solid #1A0B2E; top: 0; left: 0; }
+  .vapor .switch.on .knob { left: 22px; }
+  .vapor input[type="range"] { accent-color: #3EE6E3; }
+  .vapor .time-pair input { background: #2D1448; border-color: #3EE6E3; color: #3EE6E3; }
+  .vapor .status-chip { background: #6B2D8C; color: #F2E9FF; border-color: #E33E9E; }
+  .vapor .status-chip .pulse { background: #3EE6E3; }
+
+  /* ============================================================
+     CHROME / METAL / WATER WORLD
+     ============================================================ */
+
+  /* 1. Brushed Aluminum */
+  .alu { --sec: #52525A; background: #DADADE; color: #26262A; border-radius: 16px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.45); }
+  .alu .titlebar { background: linear-gradient(#EFEFF2, #C7C7CC); border-bottom: 1px solid #9C9CA1; }
+  .alu .titlebar .dot:nth-child(1) { background: #FF5F57; }
+  .alu .titlebar .dot:nth-child(2) { background: #FEBC2E; }
+  .alu .titlebar .dot:nth-child(3) { background: #28C840; }
+  .alu .switch { background: #B8B8BD; border-radius: 999px; box-shadow: inset 0 1px 2px rgba(255,255,255,.6), inset 0 -1px 2px rgba(0,0,0,.2); }
+  .alu .switch.on { background: linear-gradient(#3B95FF, #1E6FEB); }
+  .alu .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .alu input[type="range"] { accent-color: #1E6FEB; }
+  .alu .time-pair input { background: #EFEFF2; border: 1px solid #B0B0B5; border-radius: 6px; color: #26262A; box-shadow: inset 0 1px 2px rgba(0,0,0,.08); }
+  .alu .status-chip { background: #1458B8; color: #fff; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .alu .status-chip .pulse { background: #fff; }
+
+  /* 2. Liquid Glass */
+  .glass { --sec: #3E5A6B; background: linear-gradient(160deg, #CFE9F5, #E8F7F2); color: #0B2B40; border-radius: 26px; box-shadow: 0 24px 50px -20px rgba(0,30,50,.5); }
+  .glass .titlebar { background: rgba(255,255,255,.35); backdrop-filter: blur(6px); border-bottom: 1px solid rgba(255,255,255,.5); }
+  .glass .titlebar .dot { background: rgba(11,43,64,.3); }
+  .glass .content { background: rgba(255,255,255,.28); backdrop-filter: blur(14px); }
+  .glass .switch { background: rgba(255,255,255,.4); border-radius: 999px; box-shadow: inset 0 1px 3px rgba(255,255,255,.8), inset 0 -2px 4px rgba(0,60,90,.15); }
+  .glass .switch.on { background: linear-gradient(#5FD3C4, #2BA393); }
+  .glass .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,40,60,.3); }
+  .glass input[type="range"] { accent-color: #2BA393; }
+  .glass .time-pair input { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.7); border-radius: 8px; color: #0B2B40; }
+  .glass .status-chip { background: rgba(43,163,147,.85); color: #0B2B40; border-radius: 999px; }
+  .glass .status-chip .pulse { background: #fff; }
+
+  /* 3. Chrome Dashboard */
+  .dash { --sec: #8B9099; background: #15171A; color: #E7E9EC; border-radius: 14px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.6); }
+  .dash .titlebar { background: #1C1F23; border-bottom: 1px solid #2C3036; }
+  .dash .titlebar .dot { background: radial-gradient(circle at 35% 30%, #E9EBEE, #6B6F75); }
+  .dash .switch { background: #0E0F11; border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+  .dash .switch.on { background: linear-gradient(#D7263D, #8E1326); }
+  .dash .switch .knob { background: radial-gradient(circle at 35% 30%, #F2F4F6, #9FA5AB); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .dash input[type="range"] { accent-color: #D7263D; }
+  .dash .time-pair input { background: #0E0F11; border: 1px solid #2C3036; border-radius: 6px; color: #E7E9EC; }
+  .dash .status-chip { background: linear-gradient(#D7263D, #8E1326); color: #fff; border-radius: 999px; }
+  .dash .status-chip .pulse { background: #fff; }
+
+  /* 4. Mercury / Liquid Metal */
+  .mercury { --sec: #8E95A0; background: #1C1C1E; color: #EDEEF0; border-radius: 20px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.6); }
+  .mercury .titlebar { background: #212125; border-bottom: 1px solid #333338; }
+  .mercury .titlebar .dot { background: radial-gradient(circle at 35% 30%, #D9DDE1, #5A5E64); }
+  .mercury .switch { background: #0F0F11; border-radius: 999px; box-shadow: inset 0 2px 5px rgba(0,0,0,.7); }
+  .mercury .switch.on { background: radial-gradient(circle at 30% 30%, #B9E4F7, #4FC3F7 55%, #1C6A8C); }
+  .mercury .switch .knob { background: radial-gradient(circle at 35% 30%, #F4FBFF, #9FA6AD); border-radius: 50%; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+  .mercury input[type="range"] { accent-color: #4FC3F7; }
+  .mercury .time-pair input { background: #0F0F11; border: 1px solid #333338; border-radius: 8px; color: #EDEEF0; }
+  .mercury .status-chip { background: #15607D; color: #fff; border-radius: 999px; }
+  .mercury .status-chip .pulse { background: #fff; }
+
+  /* 5. Underwater Ripple */
+  .water { --sec: #8FD7CC; background: linear-gradient(160deg, #0B4F6C, #01262F); color: #EAFBF8; border-radius: 22px; box-shadow: 0 22px 46px -18px rgba(0,20,30,.6); }
+  .water .titlebar { background: rgba(255,255,255,.08); border-bottom: 1px solid rgba(255,255,255,.14); }
+  .water .titlebar .dot { background: rgba(234,251,248,.5); }
+  .water .switch { background: rgba(255,255,255,.12); border-radius: 999px; box-shadow: inset 0 1px 3px rgba(0,0,0,.3); }
+  .water .switch.on { background: linear-gradient(#5FD3C4, #1B8577); }
+  .water .switch .knob { background: #EAFBF8; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .water input[type="range"] { accent-color: #5FD3C4; }
+  .water .time-pair input { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); border-radius: 8px; color: #EAFBF8; }
+  .water .status-chip { background: rgba(95,211,196,.9); color: #0B2B26; border-radius: 999px; }
+  .water .status-chip .pulse { background: #0B2B26; }
+
+  /* 6. Gold / Rose Gold */
+  .gold { --sec: #B9A47A; background: linear-gradient(160deg, #1C1712, #2A2018); color: #F3E7CE; border-radius: 18px; box-shadow: 0 22px 46px -18px rgba(0,0,0,.6); }
+  .gold .titlebar { background: rgba(0,0,0,.25); border-bottom: 1px solid rgba(244,215,147,.25); }
+  .gold .titlebar .dot { background: radial-gradient(circle at 35% 30%, #F4D793, #8A6A2E); }
+  .gold .switch { background: rgba(255,255,255,.08); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+  .gold .switch.on { background: linear-gradient(135deg, #F4D793, #B8863B 50%, #F4D793); }
+  .gold .switch .knob { background: radial-gradient(circle at 35% 30%, #FFF6E2, #D4AF6A); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .gold input[type="range"] { accent-color: #D4AF6A; }
+  .gold .time-pair input { background: rgba(0,0,0,.3); border: 1px solid rgba(244,215,147,.3); border-radius: 6px; color: #F3E7CE; }
+  .gold .status-chip { background: #6B4F1D; color: #F4D793; border-radius: 999px; }
+  .gold .status-chip .pulse { background: #F4D793; }
+
+  /* 7. Holographic / Iridescent */
+  .holo { --sec: #ABA0C9; background: #121018; color: #F0EAF8; border-radius: 20px; box-shadow: 0 22px 46px -18px rgba(0,0,0,.6); }
+  .holo .titlebar { background: rgba(255,255,255,.04); border-bottom: 1px solid rgba(255,255,255,.1); }
+  .holo .titlebar .dot { background: linear-gradient(90deg, #7EE8FA, #EEC0F2, #FBD786); }
+  .holo .switch { background: rgba(255,255,255,.08); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.5); }
+  .holo .switch.on {
+    background: linear-gradient(90deg, #7EE8FA, #B6A4F7, #F7A6C8, #FBD786, #7EE8FA);
+    background-size: 300% 100%;
+    animation: holo-shift 5s linear infinite;
+  }
+  .holo .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .holo input[type="range"] { accent-color: #B6A4F7; }
+  .holo .time-pair input { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15); border-radius: 6px; color: #F0EAF8; }
+  .holo .status-chip { background: #4B2E7A; color: #fff; border-radius: 999px; }
+  .holo .status-chip .pulse { background: #fff; }
+  @keyframes holo-shift { 0% { background-position: 0% 0; } 100% { background-position: 300% 0; } }
+  @media (prefers-reduced-motion: reduce) { .holo .switch.on { animation: none; } }
+
+  /* 8. Titanium / Gunmetal */
+  .titanium { --sec: #A9AEB5; background: linear-gradient(160deg, #35383D, #22252A); color: #ECEDEF; border-radius: 14px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.6); }
+  .titanium .titlebar { background: rgba(0,0,0,.2); border-bottom: 1px solid rgba(255,255,255,.08); }
+  .titanium .titlebar .dot { background: radial-gradient(circle at 35% 30%, #CDD2D8, #5B5F65); }
+  .titanium .switch { background: #1A1C1F; border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+  .titanium .switch.on { background: linear-gradient(#7FA6F2, #5B8DEF); }
+  .titanium .switch .knob { background: radial-gradient(circle at 35% 30%, #F2F4F6, #9FA5AB); border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  .titanium input[type="range"] { accent-color: #5B8DEF; }
+  .titanium .time-pair input { background: #1A1C1F; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; color: #ECEDEF; }
+  .titanium .status-chip { background: #2A4A78; color: #fff; border-radius: 999px; }
+  .titanium .status-chip .pulse { background: #fff; }
+
+  /* 9. Obsidian Glass */
+  .obsidian { --sec: #9089A8; background: #0A0A0C; color: #E7E1F5; border-radius: 24px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.7); }
+  .obsidian .titlebar { background: rgba(255,255,255,.03); border-bottom: 1px solid rgba(124,92,255,.15); }
+  .obsidian .titlebar .dot { background: rgba(124,92,255,.5); }
+  .obsidian .content { background: rgba(255,255,255,.02); }
+  .obsidian .switch { background: rgba(255,255,255,.05); border-radius: 999px; box-shadow: inset 0 2px 4px rgba(0,0,0,.6); }
+  .obsidian .switch.on { background: linear-gradient(#9B7FFF, #7C5CFF); }
+  .obsidian .switch .knob { background: #F3F0FF; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .obsidian input[type="range"] { accent-color: #7C5CFF; }
+  .obsidian .time-pair input { background: rgba(255,255,255,.04); border: 1px solid rgba(124,92,255,.2); border-radius: 8px; color: #E7E1F5; }
+  .obsidian .status-chip { background: #2E1F55; color: #E7E1F5; border-radius: 999px; }
+  .obsidian .status-chip .pulse { background: #E7E1F5; }
+
+  /* 10. Steel Industrial */
+  .steel { --sec: #33373C; background: linear-gradient(160deg, #C7CBCF, #AEB3B8); color: #1E2227; border-radius: 12px; box-shadow: 0 20px 44px -18px rgba(0,0,0,.45); }
+  .steel .titlebar { background: linear-gradient(#DFE2E5, #B7BBBF); border-bottom: 1px solid #8D9196; }
+  .steel .titlebar .dot { background: #1D3A66; }
+  .steel .switch { background: #9EA3A8; border-radius: 999px; box-shadow: inset 0 1px 2px rgba(255,255,255,.4), inset 0 -1px 2px rgba(0,0,0,.25); }
+  .steel .switch.on { background: linear-gradient(#3D6BB0, #1D3A66); }
+  .steel .switch .knob { background: #fff; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .steel input[type="range"] { accent-color: #1D3A66; }
+  .steel .time-pair input { background: #DFE2E5; border: 1px solid #9BA0A5; border-radius: 6px; color: #1E2227; }
+  .steel .status-chip { background: #15325A; color: #fff; border-radius: 999px; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .steel .status-chip .pulse { background: #fff; }
+
+  footer.page {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 16px;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Pixelated &amp; Chrome/Metal/Water — 15 arah settings window</h1>
+    <p class="lede">Dua dunia visual beda total dari batch doodle sebelumnya. Struktur kontrol tetap sama (toggle, interval, scheduler, idle, status) biar perbandingannya adil — klik tab buat ganti arah, toggle/slider beneran bisa dicoba.</p>
+  </header>
+
+  <section class="gallery" id="gallery-pixel">
+    <h2>Pixelated</h2>
+    <p class="sub">Retro-computing: sudut tegas, border tebal, palet terbatas per era.</p>
+    <div class="tabs" role="tablist" aria-label="Pilihan pixel" data-group="pixel">
+      <button class="tab" role="tab" aria-selected="true" data-target="px1"><span class="swatch-dot" style="background:#0F380F"></span>Game Boy</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="px2"><span class="swatch-dot" style="background:#E60012"></span>NES Arcade</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="px3"><span class="swatch-dot" style="background:#FFB000"></span>DOS Phosphor</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="px4"><span class="swatch-dot" style="background:#000080"></span>Windows 95</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="px5"><span class="swatch-dot" style="background:#E33E9E"></span>Vaporwave</button>
+    </div>
+    <div class="stage">
+      <div class="frame-holder" id="pixel-frame"></div>
+      <aside class="notes">
+        <div class="noteblock" data-note="px1">
+          <p>Monokrom 4-shade asli layar DMG asli — paling "device-accurate", tapi kontras rendah buat scan cepat di settings yang agak padat.</p>
+          <ul><li>Grid pixel 2px di background, discrete bukan blur.</li><li>Toggle kotak gak ada radius sama sekali, sesuai estetika LCD kuno.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#9BBC0F"></div><div class="swatch" style="background:#8BAC0F"></div><div class="swatch" style="background:#306230"></div><div class="swatch" style="background:#0F380F"></div></div>
+        </div>
+        <div class="noteblock" data-note="px2" style="display:none">
+          <p>Hitam + 3 warna saturated ala cartridge NES — paling "arcade", nunjukin status jiggle kayak high score counter.</p>
+          <ul><li>Outline putih tebal 3px di semua kontrol, kontras tinggi gampang dibaca.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#121212"></div><div class="swatch" style="background:#E60012"></div><div class="swatch" style="background:#0070CC"></div><div class="swatch" style="background:#FFD500"></div></div>
+        </div>
+        <div class="noteblock" data-note="px3" style="display:none">
+          <p>Terminal fosfor amber di atas hitam — paling "hacker tool", scanline halus bikin kerasa monitor CRT asli.</p>
+          <ul><li>Scanline + flicker super tipis sebagai satu motion moment, dimatikan kalau reduced-motion.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#0A0A0A"></div><div class="swatch" style="background:#FFB000"></div><div class="swatch" style="background:#4A3300"></div></div>
+        </div>
+        <div class="noteblock" data-note="px4" style="display:none">
+          <p>Bevel 3D klasik Windows 95 — paling "familiar", user Linux lama mungkin langsung kenal interaksinya tanpa belajar ulang.</p>
+          <ul><li>Bevel pakai box-shadow inset berlapis (bukan radius/blur), sesuai era-nya.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#C0C0C0"></div><div class="swatch" style="background:#000080"></div><div class="swatch" style="background:#008080"></div></div>
+        </div>
+        <div class="noteblock" data-note="px5" style="display:none">
+          <p>Palet vaporwave di grid pixel — paling "estetik medsos", band warna sunset flat bukan gradient halus.</p>
+          <ul><li>Langit di-render pixel-band (canvas), bukan linear-gradient blur.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#1A0B2E"></div><div class="swatch" style="background:#6B2D8C"></div><div class="swatch" style="background:#E33E9E"></div><div class="swatch" style="background:#3EE6E3"></div></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="gallery" id="gallery-chrome">
+    <h2>Chrome / Metal / Water</h2>
+    <p class="sub">10 variasi logam, kaca, dan cairan — tiap arah punya gerakan sendiri (specular sweep, glint, shimmer), bukan cuma gradient diam.</p>
+    <div class="tabs" role="tablist" aria-label="Pilihan chrome" data-group="chrome">
+      <button class="tab" role="tab" aria-selected="true" data-target="ch1"><span class="swatch-dot" style="background:#1E6FEB"></span>Brushed Aluminum</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch2"><span class="swatch-dot" style="background:#2BA393"></span>Liquid Glass</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch3"><span class="swatch-dot" style="background:#D7263D"></span>Chrome Dashboard</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch4"><span class="swatch-dot" style="background:#4FC3F7"></span>Mercury</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch5"><span class="swatch-dot" style="background:#5FD3C4"></span>Underwater</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch6"><span class="swatch-dot" style="background:#D4AF6A"></span>Gold</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch7"><span class="swatch-dot" style="background:#B6A4F7"></span>Holographic</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch8"><span class="swatch-dot" style="background:#5B8DEF"></span>Titanium</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch9"><span class="swatch-dot" style="background:#7C5CFF"></span>Obsidian Glass</button>
+      <button class="tab" role="tab" aria-selected="false" data-target="ch10"><span class="swatch-dot" style="background:#1D3A66"></span>Steel</button>
+    </div>
+    <div class="stage">
+      <div class="frame-holder" id="chrome-frame"></div>
+      <aside class="notes">
+        <div class="noteblock" data-note="ch1">
+          <p>Mac OS X Aqua-era — titlebar lampu 3 warna khas, tombol biru glossy. Paling "profesional", cocok kalau mau kesan tool niche tapi matang.</p>
+          <ul><li>Brushed texture = garis horizontal halus digambar, bukan filter generik.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#DADADE"></div><div class="swatch" style="background:#1E6FEB"></div><div class="swatch" style="background:#26262A"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch2" style="display:none">
+          <p>Translucent frosted panel, highlight air di pojok kayak droplet kena cahaya. Paling modern/2026, dekat ke tren "liquid glass".</p>
+          <ul><li>backdrop-filter blur beneran + radial highlight, bukan cuma opacity rendah.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#EAF4FB"></div><div class="swatch" style="background:#2BA393"></div><div class="swatch" style="background:#0B2B40"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch3" style="display:none">
+          <p>Panel gelap, knob chrome bulat kayak dial dashboard mobil. Paling "serius/mekanik", switch kerasa berat/presisi.</p>
+          <ul><li>Knob pakai radial-gradient buat simulasi specular logam, bukan box-shadow doang.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#15171A"></div><div class="swatch" style="background:#D7263D"></div><div class="swatch" style="background:#9FA5AB"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch4" style="display:none">
+          <p>Blob mercury mengalir pelan di background, dingin dan cair. Paling abstrak/techy, nuansa "neural network UI".</p>
+          <ul><li>Blob di-animate ambient pelan (satu motion moment, respect reduced-motion).</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#1C1C1E"></div><div class="swatch" style="background:#4FC3F7"></div><div class="swatch" style="background:#9FA6AD"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch5" style="display:none">
+          <p>Gradient biru-teal dalam + ripple konsentris pelan. Paling "tenang/calm", pas kalau mau app ini berasa gak intrusive.</p>
+          <ul><li>Ripple digambar ulang per frame via canvas, bukan box-shadow statis.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#0B4F6C"></div><div class="swatch" style="background:#5FD3C4"></div><div class="swatch" style="background:#01262F"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch6" style="display:none">
+          <p>Panel gelap mewah, switch gradient emas, glint hangat berputar pelan di background. Paling "premium/luxury", kerasa kayak produk niche berbayar.</p>
+          <ul><li>Glint emas orbit radial — posisinya muter pelan terus, gak statis.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#2A2018"></div><div class="swatch" style="background:#D4AF6A"></div><div class="swatch" style="background:#F3E7CE"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch7" style="display:none">
+          <p>Switch-nya sendiri yang "hidup" — gradient pelangi di toggle ON bergeser terus kayak hologram kartu kredit. Paling eye-catching di antara semua chrome.</p>
+          <ul><li>Shimmer-nya CSS background-position animation, bukan canvas — ringan, gak makan CPU.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#121018"></div><div class="swatch" style="background:#7EE8FA"></div><div class="swatch" style="background:#F7A6C8"></div><div class="swatch" style="background:#FBD786"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch8" style="display:none">
+          <p>Gunmetal gelap, switch biru dingin, sweep cahaya tipis lewat pelan dari kiri ke kanan. Paling "netral/profesional" dari semua varian gelap.</p>
+          <ul><li>Sweep highlight lewat tiap ~7 detik, gak ganggu kalau lagi baca teks.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#22252A"></div><div class="swatch" style="background:#5B8DEF"></div><div class="swatch" style="background:#ECEDEF"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch9" style="display:none">
+          <p>Hampir hitam total, switch ungu redup, glint violet muncul samar lalu ilang. Paling "gelap/minim", cocok kalau tray app ini mau terasa senyap.</p>
+          <ul><li>Glint radial violet orbit sangat lambat (8 detik per putaran) — subtle, bukan dekorasi ribut.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#0A0A0C"></div><div class="swatch" style="background:#7C5CFF"></div><div class="swatch" style="background:#E7E1F5"></div></div>
+        </div>
+        <div class="noteblock" data-note="ch10" style="display:none">
+          <p>Panel terang baja gosok, switch biru industrial, sweep cahaya diagonal lewat kayak reflection di pipa logam. Satu-satunya chrome dengan bg terang.</p>
+          <ul><li>Garis polish diagonal statis + sweep cahaya bergerak — dua lapis tekstur logam.</li></ul>
+          <div class="swatches"><div class="swatch" style="background:#C7CBCF"></div><div class="swatch" style="background:#1D3A66"></div><div class="swatch" style="background:#1E2227"></div></div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <footer class="page">Toggle dan slider di tiap mockup interaktif. Dua batch ini gantiin arah doodle sebelumnya — beda dunia visual total, belum ada yang final.</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var SETTINGS_HTML =
+    '<div class="row">' +
+      '<div class="label-block"><div class="t">Jiggle aktif</div><div class="d">Gerak tiap 45 detik</div></div>' +
+      '<div class="switch on" role="switch" aria-checked="true" tabindex="0"><div class="knob"></div></div>' +
+    '</div>' +
+    '<div class="field"><div class="t">Interval gerakan</div>' +
+      '<div class="slider-row"><input type="range" min="5" max="120" value="45"><span class="val">45s</span></div>' +
+    '</div>' +
+    '<div class="field"><div class="t">Jadwal aktif</div>' +
+      '<div class="time-pair"><input value="09:00"> — <input value="17:00"></div>' +
+    '</div>' +
+    '<div class="field"><div class="t">Idle detection</div>' +
+      '<div class="row"><span class="idle-copy">Cuma jiggle kalau user idle</span>' +
+      '<div class="switch on" role="switch" aria-checked="true" tabindex="0"><div class="knob"></div></div></div>' +
+    '</div>' +
+    '<span class="status-chip"><span class="pulse"></span>SEDANG JIGGLE</span>' +
+    '<div class="tray-preview">● tray icon — status: aktif</div>';
+
+  var PIXEL_VARIANTS = [
+    { id: "px1", cls: "gameboy", kind: "gameboy" },
+    { id: "px2", cls: "nes", kind: "nes" },
+    { id: "px3", cls: "dos", kind: "dos" },
+    { id: "px4", cls: "win95", kind: "win95" },
+    { id: "px5", cls: "vapor", kind: "vapor" }
+  ];
+  var CHROME_VARIANTS = [
+    { id: "ch1", cls: "alu", kind: "alu" },
+    { id: "ch2", cls: "glass", kind: "glass" },
+    { id: "ch3", cls: "dash", kind: "dash" },
+    { id: "ch4", cls: "mercury", kind: "mercury" },
+    { id: "ch5", cls: "water", kind: "water" },
+    { id: "ch6", cls: "gold", kind: "gold" },
+    { id: "ch7", cls: "holo", kind: "none" },
+    { id: "ch8", cls: "titanium", kind: "titanium" },
+    { id: "ch9", cls: "obsidian", kind: "obsidian" },
+    { id: "ch10", cls: "steel", kind: "steel" }
+  ];
+
+  function buildPanel(v, extraClass) {
+    var wrap = document.createElement("div");
+    wrap.className = "panel" + (v.first ? " active" : "");
+    wrap.id = v.id;
+    var win = document.createElement("div");
+    win.className = "appwin " + extraClass + " " + v.cls;
+    var canvas = document.createElement("canvas");
+    canvas.className = "deco";
+    canvas.setAttribute("data-kind", v.kind);
+    var titlebar = document.createElement("div");
+    titlebar.className = "titlebar";
+    titlebar.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:4px;">zzzzziglerrr</span>';
+    var content = document.createElement("div");
+    content.className = "content";
+    content.innerHTML = SETTINGS_HTML;
+    win.appendChild(canvas);
+    win.appendChild(titlebar);
+    win.appendChild(content);
+    wrap.appendChild(win);
+    return wrap;
+  }
+
+  var pixelFrame = document.getElementById("pixel-frame");
+  PIXEL_VARIANTS.forEach(function(v, i) {
+    v.first = i === 0;
+    pixelFrame.appendChild(buildPanel(v, "pixelwin"));
+  });
+  var chromeFrame = document.getElementById("chrome-frame");
+  CHROME_VARIANTS.forEach(function(v, i) {
+    v.first = i === 0;
+    chromeFrame.appendChild(buildPanel(v, ""));
+  });
+
+  function seededRandom(seed) {
+    var s = seed;
+    return function() {
+      s = (s * 1103515245 + 12345) & 0x7fffffff;
+      return (s % 1000) / 1000;
+    };
+  }
+
+  function drawPixelGrid(ctx, w, h, size, color, alpha) {
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 1;
+    for (var x = 0; x <= w; x += size) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); }
+    for (var y = 0; y <= h; y += size) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawGameboy(ctx, w, h) { ctx.clearRect(0,0,w,h); drawPixelGrid(ctx, w, h, 8, "#0F380F", 0.08); }
+  function drawNes(ctx, w, h) { ctx.clearRect(0,0,w,h); drawPixelGrid(ctx, w, h, 10, "#FFFFFF", 0.04); }
+
+  function drawDos(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    ctx.strokeStyle = "#FFB000";
+    ctx.globalAlpha = 0.05;
+    for (var y = (t || 0) % 3; y < h; y += 3) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawWin95(ctx, w, h) { ctx.clearRect(0,0,w,h); }
+
+  function drawVapor(ctx, w, h) {
+    ctx.clearRect(0,0,w,h);
+    var bands = [
+      {y0:0, y1:60, c:"#1A0B2E"}, {y0:60, y1:100, c:"#3A1458"}, {y0:100, y1:130, c:"#6B2D8C"},
+      {y0:130, y1:152, c:"#B23E9E"}, {y0:152, y1:170, c:"#E33E9E"}
+    ];
+    bands.forEach(function(b){ ctx.fillStyle=b.c; ctx.fillRect(0,b.y0,w,b.y1-b.y0); });
+    ctx.fillStyle = "#3EE6E3";
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.arc(w/2, 150, 46, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function sweepLinear(ctx, w, h, t, period, bandWidth, color) {
+    var cycle = ((t || 0) % period) / period;
+    var x = -bandWidth + cycle * (w + bandWidth * 2);
+    var grad = ctx.createLinearGradient(x - bandWidth, 0, x + bandWidth, 0);
+    grad.addColorStop(0, "rgba(255,255,255,0)");
+    grad.addColorStop(0.5, color);
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  function glintRadial(ctx, t, period, baseX, baseY, orbitR, inner, mid, outer, radius) {
+    var ang = ((t || 0) / period) * Math.PI * 2;
+    var cx = baseX + Math.cos(ang) * orbitR;
+    var cy = baseY + Math.sin(ang) * orbitR * 0.6;
+    var grad = ctx.createRadialGradient(cx - radius * 0.2, cy - radius * 0.2, radius * 0.05, cx, cy, radius);
+    grad.addColorStop(0, inner);
+    grad.addColorStop(0.5, mid);
+    grad.addColorStop(1, outer);
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawAlu(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var rand = seededRandom(9);
+    ctx.strokeStyle = "rgba(255,255,255,.5)";
+    ctx.lineWidth = 1;
+    for (var y = 0; y < h; y += 3) {
+      ctx.globalAlpha = 0.15 + rand() * 0.1;
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    sweepLinear(ctx, w, h, t, 6000, 55, "rgba(255,255,255,.3)");
+  }
+
+  function drawGlass(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var ang = ((t || 0) / 9000) * Math.PI * 2;
+    var hx = w * 0.72 + Math.cos(ang) * 20, hy = h * 0.1 + Math.sin(ang) * 12;
+    var grad = ctx.createRadialGradient(hx, hy, 10, hx, hy, w * 0.6);
+    grad.addColorStop(0, "rgba(255,255,255,.55)");
+    grad.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    var grad2 = ctx.createLinearGradient(0,0,w,h);
+    grad2.addColorStop(0, "rgba(176,224,255,.4)");
+    grad2.addColorStop(1, "rgba(95,211,196,.25)");
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = grad2;
+    ctx.fillRect(0,0,w,h);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  function drawDash(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var grad = ctx.createRadialGradient(w*0.5, h*0.3, 20, w*0.5, h*0.3, w*0.9);
+    grad.addColorStop(0, "rgba(90,96,104,.25)");
+    grad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    sweepLinear(ctx, w, h, t, 5200, 70, "rgba(215,38,61,.14)");
+  }
+
+  function drawGold(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    glintRadial(ctx, t, 7000, w*0.6, h*0.25, 40, "rgba(255,246,226,.5)", "rgba(244,215,147,.22)", "rgba(244,215,147,0)", 95);
+  }
+
+  function drawTitanium(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var rand = seededRandom(4);
+    ctx.strokeStyle = "rgba(255,255,255,.35)";
+    ctx.lineWidth = 1;
+    for (var i = 0; i < 26; i++) {
+      var x = rand() * w, y = rand() * h, len = 10 + rand() * 18;
+      ctx.globalAlpha = 0.05 + rand() * 0.08;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y + len * 0.3); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    sweepLinear(ctx, w, h, t, 7200, 50, "rgba(255,255,255,.22)");
+  }
+
+  function drawObsidian(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    glintRadial(ctx, t, 8000, w*0.55, h*0.2, 35, "rgba(230,220,255,.4)", "rgba(124,92,255,.18)", "rgba(124,92,255,0)", 90);
+  }
+
+  function drawSteel(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var rand = seededRandom(6);
+    ctx.strokeStyle = "rgba(255,255,255,.4)";
+    ctx.lineWidth = 1;
+    ctx.save();
+    ctx.translate(w/2, h/2);
+    ctx.rotate(-0.26);
+    ctx.translate(-w/2, -h/2);
+    for (var y = -40; y < h + 40; y += 4) {
+      ctx.globalAlpha = 0.08 + rand() * 0.08;
+      ctx.beginPath(); ctx.moveTo(-40, y); ctx.lineTo(w + 40, y); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+    sweepLinear(ctx, w, h, t, 5500, 60, "rgba(255,255,255,.45)");
+  }
+
+  function drawMercury(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var cx = w*0.72 + Math.sin((t||0)/2200) * 14;
+    var cy = h*0.22 + Math.cos((t||0)/2600) * 10;
+    var grad = ctx.createRadialGradient(cx-18, cy-18, 4, cx, cy, 80);
+    grad.addColorStop(0, "rgba(220,235,245,.55)");
+    grad.addColorStop(0.5, "rgba(79,195,247,.22)");
+    grad.addColorStop(1, "rgba(79,195,247,0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(cx, cy, 80, 0, Math.PI*2); ctx.fill();
+  }
+
+  function drawWater(ctx, w, h, t) {
+    ctx.clearRect(0,0,w,h);
+    var cx = w*0.5, cy = h*0.4;
+    ctx.strokeStyle = "rgba(95,211,196,.25)";
+    ctx.lineWidth = 1.5;
+    for (var i = 0; i < 4; i++) {
+      var r = 20 + ((t||0)/26 + i*36) % 140;
+      ctx.globalAlpha = 1 - r/140;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  var renderers = {
+    gameboy: drawGameboy, nes: drawNes, dos: drawDos, win95: drawWin95, vapor: drawVapor,
+    alu: drawAlu, glass: drawGlass, dash: drawDash, mercury: drawMercury, water: drawWater,
+    gold: drawGold, titanium: drawTitanium, obsidian: drawObsidian, steel: drawSteel
+  };
+  var animated = {
+    dos: true, mercury: true, water: true,
+    alu: true, glass: true, dash: true, gold: true, titanium: true, obsidian: true, steel: true
+  };
+
+  function renderCanvas(canvas, t) {
+    var kind = canvas.getAttribute("data-kind");
+    var fn = renderers[kind];
+    if (!fn) return;
+    var rect = canvas.getBoundingClientRect();
+    if (rect.width === 0) return;
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fn(ctx, rect.width, rect.height, t);
+  }
+
+  function renderAll(t) {
+    document.querySelectorAll("canvas.deco").forEach(function(c){ renderCanvas(c, t); });
+  }
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function tick(ts) {
+    document.querySelectorAll(".panel.active canvas.deco").forEach(function(c){
+      var kind = c.getAttribute("data-kind");
+      if (animated[kind] && !reduceMotion) renderCanvas(c, ts);
+    });
+    requestAnimationFrame(tick);
+  }
+
+  document.querySelectorAll('.tabs').forEach(function(tabRow){
+    var tabs = tabRow.querySelectorAll('.tab');
+    var group = tabRow.getAttribute('data-group');
+    var noteParent = tabRow.closest('section').querySelector('.notes');
+    tabs.forEach(function(tab){
+      tab.addEventListener('click', function(){
+        tabs.forEach(function(t){ t.setAttribute('aria-selected','false'); });
+        tab.setAttribute('aria-selected','true');
+        var target = tab.getAttribute('data-target');
+        tabRow.closest('section').querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+        document.getElementById(target).classList.add('active');
+        noteParent.querySelectorAll('.noteblock').forEach(function(n){ n.style.display = (n.getAttribute('data-note') === target) ? 'block' : 'none'; });
+        requestAnimationFrame(function(){ renderAll(); });
+      });
+    });
+  });
+
+  document.querySelectorAll(".switch").forEach(function(sw) {
+    function toggle() {
+      var on = sw.classList.toggle("on");
+      sw.setAttribute("aria-checked", on ? "true" : "false");
+    }
+    sw.addEventListener("click", toggle);
+    sw.addEventListener("keydown", function(e){ if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
+  });
+
+  document.querySelectorAll('input[type="range"]').forEach(function(slider) {
+    var val = slider.parentElement.querySelector(".val");
+    if (!val) return;
+    slider.addEventListener("input", function(){ val.textContent = slider.value + "s"; });
+  });
+
+  window.addEventListener("resize", function(){ renderAll(); });
+  window.addEventListener("load", function(){ renderAll(); });
+  renderAll();
+  setTimeout(renderAll, 50);
+  requestAnimationFrame(tick);
+})();
+</script>
