@@ -25,3 +25,6 @@ dist-ssr
 
 # Docs internal — lokal doang, jangan ke-push ke remote (cuma README.md yang naik)
 /docs/
+
+# Semua git worktree ngumpul di sini, biar gak nyampah di file explorer
+/.worktrees/
