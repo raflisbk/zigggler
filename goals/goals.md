@@ -110,5 +110,6 @@ Implementasi kode: pakai trait abstraction (`trait MouseInjector { fn jiggle(&se
 - 2026-10-19 [pm] [DECISION] Scope resmi: P0 Linux/KWin device ini dulu, P1 compositor Linux lain, P2 macOS/Windows. Role di-spawn via herdr tab terpisah (rust-core, frontend-ui, platform-compat, qa-release).
 - 2026-10-19 [pm] [DECISION] Git workflow: branch per fitur (`feat/<role>-<fitur>`), commit → push → PR → review qa-release → merge main → update goals.md.
 - 2026-10-19 [pm] [DECISION] Remote origin URL kena typo (`https:/` → `https://`), udah di-fix sebelum role mulai push.
+- 2026-10-20 [platform-compat] [DONE] Udev rule installer (`platform/linux/99-uinput.rules` + `install-udev-rule.sh`) buat akses `/dev/uinput` (grup `input` + `uaccess`). Verifikasi `ext-idle-notify-v1` di KWin 6.3.6 device ini via `wayland-info` (interface `ext_idle_notifier_v1` version 1 tampil, bukan asumsi) — gak perlu fallback dbus buat P0. Gotcha scaling dicatat: scale 1.1, logical 1746x982 (deket sama 1749x983 di PRD), WebKitGTK rawan sub-pixel rounding di fractional scale — perlu dites khusus pas QA tema pixel-art. — PR #2 (`feat/platform-compat-udev-idle-docs`)
 
 <!-- Role: tambah entry baru di bawah ini, jangan edit/hapus entry lama -->
