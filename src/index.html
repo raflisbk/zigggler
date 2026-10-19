@@ -238,7 +238,7 @@
 <body>
   <div class="appwin gameboy" id="appwin">
     <canvas class="deco" id="deco"></canvas>
-    <div class="titlebar">
+    <div class="titlebar" data-tauri-drag-region>
       <span class="dot"></span><span class="dot"></span><span class="dot"></span>
       <span class="title-text">zzzzziglerrr</span>
       <div class="titlebar-actions">
@@ -294,20 +294,20 @@
   "use strict";
 
   var THEMES = [
-    { cls: "gameboy", extra: "pixelwin", swatch: "#0F380F", name: { id: "game boy", en: "Game Boy", ja: "Game Boy" } },
-    { cls: "nes", extra: "pixelwin", swatch: "#E60012", name: { id: "nes arcade", en: "NES Arcade", ja: "NES Arcade" } },
-    { cls: "dos", extra: "pixelwin", swatch: "#FFB000", name: { id: "dos phosphor", en: "DOS Phosphor", ja: "DOS Phosphor" } },
-    { cls: "mercury", extra: "", swatch: "#4FC3F7", name: { id: "mercury", en: "Mercury", ja: "Mercury" } },
-    { cls: "gold", extra: "", swatch: "#D4AF6A", name: { id: "gold", en: "Gold", ja: "Gold" } },
-    { cls: "obsidian", extra: "", swatch: "#7C5CFF", name: { id: "obsidian glass", en: "Obsidian Glass", ja: "Obsidian Glass" } },
-    { cls: "glass", extra: "", swatch: "#2BA393", name: { id: "liquid glass", en: "Liquid Glass", ja: "Liquid Glass" } },
-    { cls: "holo", extra: "", swatch: "#B6A4F7", name: { id: "holographic", en: "Holographic", ja: "Holographic" } },
-    { cls: "sketchbook", extra: "", swatch: "#D1495B", name: { id: "sketchbook", en: "Sketchbook", ja: "Sketchbook" } },
-    { cls: "blob", extra: "", swatch: "#E98074", name: { id: "pastel blob", en: "Pastel Blob", ja: "Pastel Blob" } },
-    { cls: "comic", extra: "", swatch: "#FFD23F", name: { id: "comic outline", en: "Comic Outline", ja: "Comic Outline" } }
+    { key: "game-boy", cls: "gameboy", extra: "pixelwin", swatch: "#0F380F", name: { id: "game boy", en: "Game Boy", ja: "Game Boy" } },
+    { key: "nes-arcade", cls: "nes", extra: "pixelwin", swatch: "#E60012", name: { id: "nes arcade", en: "NES Arcade", ja: "NES Arcade" } },
+    { key: "dos-phosphor", cls: "dos", extra: "pixelwin", swatch: "#FFB000", name: { id: "dos phosphor", en: "DOS Phosphor", ja: "DOS Phosphor" } },
+    { key: "mercury", cls: "mercury", extra: "", swatch: "#4FC3F7", name: { id: "mercury", en: "Mercury", ja: "Mercury" } },
+    { key: "gold", cls: "gold", extra: "", swatch: "#D4AF6A", name: { id: "gold", en: "Gold", ja: "Gold" } },
+    { key: "obsidian-glass", cls: "obsidian", extra: "", swatch: "#7C5CFF", name: { id: "obsidian glass", en: "Obsidian Glass", ja: "Obsidian Glass" } },
+    { key: "liquid-glass", cls: "glass", extra: "", swatch: "#2BA393", name: { id: "liquid glass", en: "Liquid Glass", ja: "Liquid Glass" } },
+    { key: "holographic", cls: "holo", extra: "", swatch: "#B6A4F7", name: { id: "holographic", en: "Holographic", ja: "Holographic" } },
+    { key: "sketchbook", cls: "sketchbook", extra: "", swatch: "#D1495B", name: { id: "sketchbook", en: "Sketchbook", ja: "Sketchbook" } },
+    { key: "pastel-blob", cls: "blob", extra: "", swatch: "#E98074", name: { id: "pastel blob", en: "Pastel Blob", ja: "Pastel Blob" } },
+    { key: "comic-outline", cls: "comic", extra: "", swatch: "#FFD23F", name: { id: "comic outline", en: "Comic Outline", ja: "Comic Outline" } }
   ];
-  var THEME_BY_CLS = {};
-  THEMES.forEach(function(t, i){ THEME_BY_CLS[t.cls] = i; });
+  var THEME_BY_KEY = {};
+  THEMES.forEach(function(t, i){ THEME_BY_KEY[t.key] = i; });
 
   var DICT = {
     id: {
@@ -355,16 +355,16 @@
   };
 
   var DEFAULT_CONFIG = {
-    theme: "gameboy",
+    theme: "game-boy",
     locale: "id",
-    interval_secs: 45,
-    schedule_start: "09:00",
-    schedule_end: "17:00",
-    idle_only: true,
-    jiggle_on: true
+    intervalSecs: 60,
+    scheduleStart: "09:00",
+    scheduleEnd: "17:00",
+    idleOnly: false
   };
 
   var config = Object.assign({}, DEFAULT_CONFIG);
+  var jiggleOn = false;
 
   var tauriInvoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) || null;
   if (!tauriInvoke) {
@@ -388,7 +388,7 @@
 
   function applyTheme(i, skipPersist) {
     var t = THEMES[i];
-    config.theme = t.cls;
+    config.theme = t.key;
     appwin.className = "appwin " + t.cls + (t.extra ? " " + t.extra : "");
     deco.setAttribute("data-kind", t.cls);
     document.getElementById("themeTriggerDot").style.background = t.swatch;
@@ -403,7 +403,7 @@
     config.locale = locale;
     var d = DICT[locale];
     document.getElementById("jiggleLabel").textContent = d.jiggleLabel;
-    document.getElementById("jiggleDesc").textContent = d.jiggleDesc(config.interval_secs);
+    document.getElementById("jiggleDesc").textContent = d.jiggleDesc(config.intervalSecs);
     document.getElementById("intervalLabel").textContent = d.intervalLabel;
     document.getElementById("scheduleLabel").textContent = d.scheduleLabel;
     document.getElementById("idleLabelT").textContent = d.idleLabelT;
@@ -423,20 +423,20 @@
 
   function updateChip() {
     var d = DICT[config.locale];
-    document.getElementById("statusChipText").textContent = config.jiggle_on ? d.chipOn : d.chipOff;
-    document.getElementById("statusChip").style.opacity = config.jiggle_on ? "1" : ".6";
-    document.getElementById("trayPreview").textContent = "● " + (config.jiggle_on ? d.trayOn : d.trayOff);
+    document.getElementById("statusChipText").textContent = jiggleOn ? d.chipOn : d.chipOff;
+    document.getElementById("statusChip").style.opacity = jiggleOn ? "1" : ".6";
+    document.getElementById("trayPreview").textContent = "● " + (jiggleOn ? d.trayOn : d.trayOff);
   }
 
   function applyConfigToUi(skipPersist) {
-    applyTheme(THEME_BY_CLS[config.theme] || 0, true);
+    applyTheme(THEME_BY_KEY[config.theme] || 0, true);
     applyLocale(config.locale, true);
-    document.getElementById("intervalSlider").value = config.interval_secs;
-    document.getElementById("intervalVal").textContent = config.interval_secs + "s";
-    document.getElementById("scheduleStart").value = config.schedule_start;
-    document.getElementById("scheduleEnd").value = config.schedule_end;
-    setSwitch(idleSwitch, config.idle_only);
-    setSwitch(mainSwitch, config.jiggle_on);
+    document.getElementById("intervalSlider").value = config.intervalSecs;
+    document.getElementById("intervalVal").textContent = config.intervalSecs + "s";
+    document.getElementById("scheduleStart").value = config.scheduleStart;
+    document.getElementById("scheduleEnd").value = config.scheduleEnd;
+    setSwitch(idleSwitch, config.idleOnly);
+    setSwitch(mainSwitch, jiggleOn);
     updateChip();
   }
 
@@ -486,9 +486,8 @@
   var mainSwitch = document.getElementById("mainSwitch");
   mainSwitch.addEventListener("click", function(){
     invoke("toggle_jiggle").then(function(result){
-      var on = typeof result === "boolean" ? result : !config.jiggle_on;
-      config.jiggle_on = on;
-      setSwitch(mainSwitch, on);
+      jiggleOn = typeof result === "boolean" ? result : !jiggleOn;
+      setSwitch(mainSwitch, jiggleOn);
       updateChip();
     });
   });
@@ -500,7 +499,7 @@
   idleSwitch.addEventListener("click", function(){
     var on = !idleSwitch.classList.contains("on");
     setSwitch(idleSwitch, on);
-    config.idle_only = on;
+    config.idleOnly = on;
     persistConfig();
   });
   idleSwitch.addEventListener("keydown", function(e){
@@ -509,17 +508,17 @@
 
   var slider = document.getElementById("intervalSlider");
   slider.addEventListener("input", function(){
-    config.interval_secs = Number(slider.value);
+    config.intervalSecs = Number(slider.value);
     document.getElementById("intervalVal").textContent = slider.value + "s";
-    document.getElementById("jiggleDesc").textContent = DICT[config.locale].jiggleDesc(config.interval_secs);
+    document.getElementById("jiggleDesc").textContent = DICT[config.locale].jiggleDesc(config.intervalSecs);
   });
   slider.addEventListener("change", persistConfig);
 
   var scheduleStart = document.getElementById("scheduleStart");
   var scheduleEnd = document.getElementById("scheduleEnd");
   function onScheduleChange(){
-    config.schedule_start = scheduleStart.value;
-    config.schedule_end = scheduleEnd.value;
+    config.scheduleStart = scheduleStart.value;
+    config.scheduleEnd = scheduleEnd.value;
     persistConfig();
   }
   scheduleStart.addEventListener("change", onScheduleChange);
