@@ -13,7 +13,8 @@
         "title": "zzzzziglerrr",
         "width": 300,
         "height": 300,
-        "resizable": false
+        "resizable": false,
+        "decorations": false
       }
     ],
     "security": {
