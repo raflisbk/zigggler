@@ -9,12 +9,13 @@ pub use linux::WaylandIdleWatcher;
 #[cfg(target_os = "linux")]
 mod linux {
     use super::IdleWatcher;
+    use std::sync::atomic::{AtomicBool, Ordering};
     use std::sync::{Arc, Mutex};
-    use std::time::Instant;
+    use std::time::{Instant, SystemTime, UNIX_EPOCH};
     use wayland_client::globals::GlobalListContents;
     use wayland_client::protocol::wl_registry::WlRegistry;
     use wayland_client::protocol::wl_seat::WlSeat;
-    use wayland_client::{Connection, Dispatch, QueueHandle};
+    use wayland_client::{Connection, Dispatch, EventQueue, QueueHandle};
     use wayland_protocols::ext::idle_notify::v1::client::ext_idle_notification_v1::{
         self, ExtIdleNotificationV1,
     };
@@ -26,8 +27,23 @@ mod linux {
     /// resets the compositor's input timer.
     const IDLE_TIMEOUT_MS: u32 = 8_000;
 
+    fn log_ts(msg: &str) {
+        let secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        eprintln!("zzzzziglerrr[idle_watcher] t={secs} {msg}");
+    }
+
     struct State {
         idle_since: Arc<Mutex<Option<Instant>>>,
+    }
+
+    /// Recovers the lock value even if a previous panic poisoned the mutex —
+    /// one bad event handler shouldn't permanently brick idle tracking for the
+    /// rest of the process.
+    fn lock_recoverable<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+        mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     impl Dispatch<WlRegistry, GlobalListContents> for State {
@@ -77,10 +93,12 @@ mod linux {
         ) {
             match event {
                 ext_idle_notification_v1::Event::Idled => {
-                    *state.idle_since.lock().expect("idle mutex poisoned") = Some(Instant::now());
+                    *lock_recoverable(&state.idle_since) = Some(Instant::now());
+                    log_ts("Idled");
                 }
                 ext_idle_notification_v1::Event::Resumed => {
-                    *state.idle_since.lock().expect("idle mutex poisoned") = None;
+                    *lock_recoverable(&state.idle_since) = None;
+                    log_ts("Resumed");
                 }
                 _ => {}
             }
@@ -89,6 +107,12 @@ mod linux {
 
     pub struct WaylandIdleWatcher {
         idle_since: Arc<Mutex<Option<Instant>>>,
+        /// False once the Wayland dispatch thread has stopped (panic or
+        /// protocol error). When that happens we can no longer trust
+        /// `idle_since`, so `idle_seconds()` fails open instead of freezing
+        /// at whatever value it last had — a dead watcher must never
+        /// permanently block jiggling under `idle_only`.
+        dispatch_alive: Arc<AtomicBool>,
     }
 
     impl WaylandIdleWatcher {
@@ -98,35 +122,62 @@ mod linux {
         /// `idle_only` being unavailable rather than failing hard.
         pub fn spawn() -> Option<Self> {
             let conn = Connection::connect_to_env().ok()?;
-            let (globals, mut queue) =
+            let (globals, queue) =
                 wayland_client::globals::registry_queue_init::<State>(&conn).ok()?;
             let qh = queue.handle();
 
-            let seat: WlSeat = globals
-                .bind(&qh, 1..=1, ())
-                .ok()?;
+            let seat: WlSeat = globals.bind(&qh, 1..=1, ()).ok()?;
             let notifier: ExtIdleNotifierV1 = globals.bind(&qh, 1..=1, ()).ok()?;
 
             let idle_since = Arc::new(Mutex::new(None));
-            let mut state = State {
+            let state = State {
                 idle_since: idle_since.clone(),
             };
 
-            let _notification = notifier.get_idle_notification(IDLE_TIMEOUT_MS, &seat, &qh, ());
+            // Kept alive for the lifetime of the dispatch thread — dropping it
+            // early would be surprising (and risks the compositor tearing down
+            // the object), so it's moved into the loop instead of discarded.
+            let notification = notifier.get_idle_notification(IDLE_TIMEOUT_MS, &seat, &qh, ());
 
-            std::thread::spawn(move || loop {
-                if queue.blocking_dispatch(&mut state).is_err() {
+            let dispatch_alive = Arc::new(AtomicBool::new(true));
+            spawn_dispatch_thread(queue, state, notification, dispatch_alive.clone());
+
+            Some(Self {
+                idle_since,
+                dispatch_alive,
+            })
+        }
+    }
+
+    fn spawn_dispatch_thread(
+        mut queue: EventQueue<State>,
+        mut state: State,
+        _notification: ExtIdleNotificationV1,
+        dispatch_alive: Arc<AtomicBool>,
+    ) {
+        std::thread::spawn(move || {
+            log_ts("dispatch thread started");
+            loop {
+                if let Err(err) = queue.blocking_dispatch(&mut state) {
+                    log_ts(&format!(
+                        "dispatch thread stopping, blocking_dispatch error: {err}"
+                    ));
                     break;
                 }
-            });
-
-            Some(Self { idle_since })
-        }
+            }
+            dispatch_alive.store(false, Ordering::SeqCst);
+            log_ts("dispatch thread dead, idle_seconds() fails open from now on");
+        });
     }
 
     impl IdleWatcher for WaylandIdleWatcher {
         fn idle_seconds(&self) -> u64 {
-            match *self.idle_since.lock().expect("idle mutex poisoned") {
+            if !self.dispatch_alive.load(Ordering::SeqCst) {
+                // Watcher is dead — we have no idea if the user is idle.
+                // Fail open rather than silently never jiggling again.
+                return IDLE_TIMEOUT_MS as u64 / 1000 + 1;
+            }
+            match *lock_recoverable(&self.idle_since) {
                 Some(since) => (IDLE_TIMEOUT_MS as u64 / 1000) + since.elapsed().as_secs(),
                 None => 0,
             }

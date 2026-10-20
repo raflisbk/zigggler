@@ -113,6 +113,18 @@ fn refresh_tray(app_handle: &AppHandle, state: TrayState, theme: &str) {
 }
 
 #[cfg(target_os = "linux")]
+fn log_tick(idle_only: bool, idle_seconds: u64, gate_open: bool) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    eprintln!(
+        "zzzzziglerrr[jiggle_loop] t={secs} tick idle_only={idle_only} idle_seconds={idle_seconds} gate_open={gate_open}"
+    );
+}
+
+#[cfg(target_os = "linux")]
 fn spawn_jiggle_loop(
     app_handle: AppHandle,
     jiggling: Arc<AtomicBool>,
@@ -148,7 +160,9 @@ fn spawn_jiggle_loop(
                 continue;
             }
             let idle_seconds = idle_watcher.as_ref().map_or(0, |w| w.idle_seconds());
-            if scheduler::should_jiggle(idle_only, idle_seconds) {
+            let gate_open = scheduler::should_jiggle(idle_only, idle_seconds);
+            log_tick(idle_only, idle_seconds, gate_open);
+            if gate_open {
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
                 injector.jiggle();
