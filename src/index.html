@@ -492,7 +492,8 @@
   var currentWindow = tauriWindow ? tauriWindow.getCurrentWindow() : null;
 
   document.getElementById("minimizeBtn").addEventListener("click", function(){
-    if (currentWindow) currentWindow.minimize();
+    // app ini tray-centric, gak perlu numpang di taskbar — sama kayak closeBtn.
+    if (currentWindow) currentWindow.hide();
   });
   document.getElementById("closeBtn").addEventListener("click", function(){
     // sama kayak CloseRequested handler di src-tauri: hide ke tray, gak exit process.
