@@ -138,24 +138,17 @@ fn spawn_jiggle_loop(
         }
 
         loop {
-            let (interval_secs, schedule_start, schedule_end, idle_only, theme) = {
+            let (interval_secs, idle_only, theme) = {
                 let config = config.lock().expect("config mutex poisoned");
-                (
-                    config.interval_secs,
-                    config.schedule_start.clone(),
-                    config.schedule_end.clone(),
-                    config.idle_only,
-                    config.theme.clone(),
-                )
+                (config.interval_secs, config.idle_only, config.theme.clone())
             };
             std::thread::sleep(Duration::from_secs(interval_secs.max(1)));
 
             if !jiggling.load(Ordering::SeqCst) {
                 continue;
             }
-            let in_schedule = scheduler::is_within_schedule(&schedule_start, &schedule_end);
             let idle_seconds = idle_watcher.as_ref().map_or(0, |w| w.idle_seconds());
-            if scheduler::should_jiggle(in_schedule, idle_only, idle_seconds) {
+            if scheduler::should_jiggle(idle_only, idle_seconds) {
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
                 injector.jiggle();
