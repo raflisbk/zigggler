@@ -8,8 +8,6 @@ pub struct Config {
     pub theme: String,
     pub locale: String,
     pub interval_secs: u64,
-    pub schedule_start: String,
-    pub schedule_end: String,
     pub idle_only: bool,
 }
 
@@ -19,8 +17,6 @@ impl Default for Config {
             theme: "game-boy".into(),
             locale: "id".into(),
             interval_secs: 60,
-            schedule_start: "09:00".into(),
-            schedule_end: "17:00".into(),
             idle_only: false,
         }
     }
