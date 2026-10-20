@@ -162,6 +162,7 @@ fn spawn_jiggle_loop(
             );
         }
 
+        let mut consecutive_closed_ticks: u64 = 0;
         loop {
             let (interval_secs, idle_only, theme) = {
                 let config = config.lock().expect("config mutex poisoned");
@@ -175,6 +176,23 @@ fn spawn_jiggle_loop(
             let idle_seconds = idle_watcher.as_ref().map_or(0, |w| w.idle_seconds());
             let gate_open = scheduler::should_jiggle(idle_only, idle_seconds);
             log_tick(idle_only, idle_seconds, gate_open);
+
+            if gate_open {
+                consecutive_closed_ticks = 0;
+            } else {
+                consecutive_closed_ticks += 1;
+                // Every ~2 minutes the gate stays closed, say so loudly —
+                // this is the exact signal that would've caught platform-
+                // compat's ~40min stuck-gate report sooner.
+                let ticks_per_log = (120 / interval_secs.max(1)).max(1);
+                if consecutive_closed_ticks % ticks_per_log == 0 {
+                    let closed_secs = consecutive_closed_ticks * interval_secs.max(1);
+                    eprintln!(
+                        "zzzzziglerrr[jiggle_loop] gate CLOSED terus {closed_secs}s berturut-turut (idle_only={idle_only})"
+                    );
+                }
+            }
+
             if gate_open {
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
