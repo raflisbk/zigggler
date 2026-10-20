@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::image::Image;
-use tauri::menu::{Menu, MenuItem};
+use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager};
 
@@ -29,8 +29,32 @@ struct AppState {
     jiggling: Arc<AtomicBool>,
     tray_state: Arc<Mutex<TrayState>>,
     app_handle: AppHandle,
+    jiggle_menu_item: CheckMenuItem<tauri::Wry>,
     #[cfg(target_os = "linux")]
     screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
+}
+
+/// Shared by the `toggle_jiggle` command and the tray menu's "Toggle Jiggle"
+/// checkbox so both paths flip the same state the same way.
+fn do_toggle_jiggle(state: &AppState) -> bool {
+    let now = !state.jiggling.load(Ordering::SeqCst);
+    state.jiggling.store(now, Ordering::SeqCst);
+    let next_state = if now { TrayState::Waiting } else { TrayState::Off };
+    *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
+    let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
+    refresh_tray(&state.app_handle, next_state, &theme);
+    let _ = state.jiggle_menu_item.set_checked(now);
+
+    #[cfg(target_os = "linux")]
+    {
+        if now {
+            state.screensaver_inhibitor.inhibit();
+        } else {
+            state.screensaver_inhibitor.uninhibit();
+        }
+    }
+
+    now
 }
 
 #[tauri::command]
@@ -50,23 +74,7 @@ fn set_config(state: tauri::State<AppState>, config: Config) -> Result<(), Strin
 
 #[tauri::command]
 fn toggle_jiggle(state: tauri::State<AppState>) -> bool {
-    let now = !state.jiggling.load(Ordering::SeqCst);
-    state.jiggling.store(now, Ordering::SeqCst);
-    let next_state = if now { TrayState::Waiting } else { TrayState::Off };
-    *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
-    let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
-    refresh_tray(&state.app_handle, next_state, &theme);
-
-    #[cfg(target_os = "linux")]
-    {
-        if now {
-            state.screensaver_inhibitor.inhibit();
-        } else {
-            state.screensaver_inhibitor.uninhibit();
-        }
-    }
-
-    now
+    do_toggle_jiggle(&state)
 }
 
 // Swatch per tema — duplikat dari THEMES di src/index.html karena tray icon
@@ -89,39 +97,66 @@ fn theme_swatch(theme: &str) -> (u8, u8, u8) {
     }
 }
 
-fn dot_icon(rgb: (u8, u8, u8), alpha: u8) -> Image<'static> {
-    const SIZE: u32 = 32;
-    let (r, g, b) = rgb;
-    let center = SIZE as f32 / 2.0;
-    let radius = center - 2.0;
-    let mut pixels = vec![0u8; (SIZE * SIZE * 4) as usize];
-    for y in 0..SIZE {
-        for x in 0..SIZE {
-            let dx = x as f32 + 0.5 - center;
-            let dy = y as f32 + 0.5 - center;
-            if dx * dx + dy * dy <= radius * radius {
-                let idx = ((y * SIZE + x) * 4) as usize;
-                pixels[idx] = r;
-                pixels[idx + 1] = g;
-                pixels[idx + 2] = b;
-                pixels[idx + 3] = alpha;
-            }
+static BRAND_ICON_BYTES: &[u8] = include_bytes!("../icons/32x32.png");
+
+/// Badge color/alpha per state, drawn as a small dot in the bottom-right
+/// corner of the brand icon — off/waiting/jiggling is communicated by the
+/// badge, not by replacing the whole icon with a plain dot.
+fn badge_for(state: TrayState, theme: &str) -> Option<(u8, u8, u8, u8)> {
+    match state {
+        TrayState::Off => None,
+        TrayState::Waiting => {
+            let (r, g, b) = theme_swatch(theme);
+            Some((r, g, b, 150))
+        }
+        TrayState::Jiggling => {
+            let (r, g, b) = theme_swatch(theme);
+            Some((r, g, b, 255))
         }
     }
-    Image::new_owned(pixels, SIZE, SIZE)
 }
 
 fn tray_icon_for(state: TrayState, theme: &str) -> Image<'static> {
-    match state {
-        TrayState::Off => dot_icon((0x6B, 0x6B, 0x70), 160),
-        TrayState::Waiting => dot_icon(theme_swatch(theme), 130),
-        TrayState::Jiggling => dot_icon(theme_swatch(theme), 255),
+    let mut icon = image::load_from_memory(BRAND_ICON_BYTES)
+        .expect("bundled tray icon is a valid PNG")
+        .to_rgba8();
+    let (width, height) = icon.dimensions();
+
+    if state == TrayState::Off {
+        // Dim the whole icon so "off" reads as inactive at a glance.
+        for pixel in icon.pixels_mut() {
+            pixel[3] = (pixel[3] as u16 * 140 / 255) as u8;
+        }
     }
+
+    if let Some((r, g, b, a)) = badge_for(state, theme) {
+        let badge_radius = (width.min(height) as f32 * 0.22).max(3.0);
+        let cx = width as f32 - badge_radius - 1.0;
+        let cy = height as f32 - badge_radius - 1.0;
+        for y in 0..height {
+            for x in 0..width {
+                let dx = x as f32 + 0.5 - cx;
+                let dy = y as f32 + 0.5 - cy;
+                if dx * dx + dy * dy <= badge_radius * badge_radius {
+                    icon.put_pixel(x, y, image::Rgba([r, g, b, a]));
+                }
+            }
+        }
+    }
+
+    Image::new_owned(icon.into_raw(), width, height)
 }
 
 fn refresh_tray(app_handle: &AppHandle, state: TrayState, theme: &str) {
     if let Some(tray) = app_handle.tray_by_id(TRAY_ID) {
         let _ = tray.set_icon(Some(tray_icon_for(state, theme)));
+    }
+}
+
+fn focus_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+        let _ = window.show();
+        let _ = window.set_focus();
     }
 }
 
@@ -206,13 +241,6 @@ fn spawn_jiggle_loop(
     });
 }
 
-fn focus_main_window(app: &AppHandle) {
-    if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
-        let _ = window.show();
-        let _ = window.set_focus();
-    }
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -226,19 +254,32 @@ pub fn run() {
             let tray_state = Arc::new(Mutex::new(TrayState::Off));
             let app_handle = app.handle().clone();
 
+            let jiggle_menu_item =
+                CheckMenuItem::with_id(app, "toggle_jiggle", "Toggle Jiggle", true, false, None::<&str>)?;
+            let settings_item =
+                MenuItem::with_id(app, "open_settings", "Buka Settings", true, None::<&str>)?;
+            let separator = PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&quit_item])?;
+            let menu = Menu::with_items(
+                app,
+                &[&jiggle_menu_item, &settings_item, &separator, &quit_item],
+            )?;
 
             TrayIconBuilder::with_id(TRAY_ID)
                 .icon(tray_icon_for(TrayState::Off, &config.lock().expect("config mutex poisoned").theme))
                 .menu(&menu)
                 .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| {
-                    if event.id() == "quit" {
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "toggle_jiggle" => {
+                        do_toggle_jiggle(&app.state::<AppState>());
+                    }
+                    "open_settings" => focus_main_window(app),
+                    "quit" => {
                         #[cfg(target_os = "linux")]
                         app.state::<AppState>().screensaver_inhibitor.uninhibit();
                         app.exit(0);
                     }
+                    _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
@@ -277,6 +318,7 @@ pub fn run() {
                 jiggling,
                 tray_state,
                 app_handle,
+                jiggle_menu_item,
                 #[cfg(target_os = "linux")]
                 screensaver_inhibitor,
             });
