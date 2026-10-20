@@ -245,6 +245,17 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            // `tauri.conf.json`'s window config has no `icon` field in this
+            // Tauri version — without this the running window/taskbar icon
+            // falls back to Tauri's default logo even though the bundled
+            // launcher icon (desktop file) is correct. Embedded at compile
+            // time so it doesn't depend on resource-dir bundling behavior.
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+                if let Ok(icon) = Image::from_bytes(include_bytes!("../icons/icon.png")) {
+                    let _ = window.set_icon(icon);
+                }
+            }
+
             #[cfg(target_os = "linux")]
             spawn_jiggle_loop(app_handle.clone(), jiggling.clone(), config.clone(), tray_state.clone());
 
