@@ -207,6 +207,8 @@ pub fn run() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| {
                     if event.id() == "quit" {
+                        #[cfg(target_os = "linux")]
+                        app.state::<AppState>().screensaver_inhibitor.uninhibit();
                         app.exit(0);
                     }
                 })
