@@ -283,10 +283,6 @@
           <div class="slider-row"><input type="range" id="intervalSlider" min="5" max="120" value="45"><span class="val" id="intervalVal">45s</span></div>
         </div>
         <div class="field">
-          <div class="t" id="scheduleLabel"></div>
-          <div class="time-pair"><input id="scheduleStart" value="09:00"> — <input id="scheduleEnd" value="17:00"></div>
-        </div>
-        <div class="field">
           <div class="t" id="idleLabelT"></div>
           <div class="row"><span class="idle-copy" id="idleDesc"></span>
             <div class="switch on" id="idleSwitch" role="switch" aria-checked="true" tabindex="0"><div class="knob"></div></div>
@@ -331,7 +327,6 @@
       jiggleLabel: "lagi nge-jig",
       jiggleDesc: function(n){ return "tiap " + n + "s, biar online mulu"; },
       intervalLabel: "berapa detik sih",
-      scheduleLabel: "jam gasnya",
       idleLabelT: "nge-jig pas nganggur aja",
       idleDesc: "anteng kalau lo pegang mouse",
       themeViewTitle: "cari tema",
@@ -345,7 +340,6 @@
       jiggleLabel: "jigglin'",
       jiggleDesc: function(n){ return "every " + n + "s, keeps you looking online"; },
       intervalLabel: "how often",
-      scheduleLabel: "active hours",
       idleLabelT: "jiggle only when idle",
       idleDesc: "stays quiet while you're using the mouse",
       themeViewTitle: "pick a theme",
@@ -359,7 +353,6 @@
       jiggleLabel: "ジグってる",
       jiggleDesc: function(n){ return n + "秒おきに動く、オンラインっぽく見せる"; },
       intervalLabel: "どのくらいの頻度",
-      scheduleLabel: "動く時間",
       idleLabelT: "離席中だけジグる",
       idleDesc: "マウス触ってる時は邪魔しない",
       themeViewTitle: "テーマを選ぶ",
@@ -375,8 +368,6 @@
     theme: "game-boy",
     locale: "id",
     intervalSecs: 60,
-    scheduleStart: "09:00",
-    scheduleEnd: "17:00",
     idleOnly: false
   };
 
@@ -422,7 +413,6 @@
     document.getElementById("jiggleLabel").textContent = d.jiggleLabel;
     document.getElementById("jiggleDesc").textContent = d.jiggleDesc(config.intervalSecs);
     document.getElementById("intervalLabel").textContent = d.intervalLabel;
-    document.getElementById("scheduleLabel").textContent = d.scheduleLabel;
     document.getElementById("idleLabelT").textContent = d.idleLabelT;
     document.getElementById("idleDesc").textContent = d.idleDesc;
     document.getElementById("themeViewTitle").textContent = d.themeViewTitle;
@@ -450,8 +440,6 @@
     applyLocale(config.locale, true);
     document.getElementById("intervalSlider").value = config.intervalSecs;
     document.getElementById("intervalVal").textContent = config.intervalSecs + "s";
-    document.getElementById("scheduleStart").value = config.scheduleStart;
-    document.getElementById("scheduleEnd").value = config.scheduleEnd;
     setSwitch(idleSwitch, config.idleOnly);
     setSwitch(mainSwitch, jiggleOn);
     updateChip();
@@ -541,16 +529,6 @@
     document.getElementById("jiggleDesc").textContent = DICT[config.locale].jiggleDesc(config.intervalSecs);
   });
   slider.addEventListener("change", persistConfig);
-
-  var scheduleStart = document.getElementById("scheduleStart");
-  var scheduleEnd = document.getElementById("scheduleEnd");
-  function onScheduleChange(){
-    config.scheduleStart = scheduleStart.value;
-    config.scheduleEnd = scheduleEnd.value;
-    persistConfig();
-  }
-  scheduleStart.addEventListener("change", onScheduleChange);
-  scheduleEnd.addEventListener("change", onScheduleChange);
 
   function seededRandom(seed) {
     var s = seed;
