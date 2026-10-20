@@ -37,6 +37,12 @@ mod linux {
 
     struct State {
         idle_since: Arc<Mutex<Option<Instant>>>,
+        /// When the previous Idled/Resumed transition happened, and how many
+        /// transitions have fired so far — diagnostic only, lets a long
+        /// session's logs show exactly how often/fast the compositor is
+        /// flipping idle state instead of just the raw event names.
+        last_transition: Instant,
+        transition_count: u64,
     }
 
     /// Recovers the lock value even if a previous panic poisoned the mutex —
@@ -91,16 +97,26 @@ mod linux {
             _conn: &Connection,
             _qh: &QueueHandle<Self>,
         ) {
-            match event {
+            let name = match event {
                 ext_idle_notification_v1::Event::Idled => {
                     *lock_recoverable(&state.idle_since) = Some(Instant::now());
-                    log_ts("Idled");
+                    Some("Idled")
                 }
                 ext_idle_notification_v1::Event::Resumed => {
                     *lock_recoverable(&state.idle_since) = None;
-                    log_ts("Resumed");
+                    Some("Resumed")
                 }
-                _ => {}
+                _ => None,
+            };
+            if let Some(name) = name {
+                let now = Instant::now();
+                let since_prev = now.duration_since(state.last_transition).as_secs_f64();
+                state.last_transition = now;
+                state.transition_count += 1;
+                log_ts(&format!(
+                    "{name} (transition #{}, {since_prev:.1}s since previous transition)",
+                    state.transition_count
+                ));
             }
         }
     }
@@ -132,6 +148,8 @@ mod linux {
             let idle_since = Arc::new(Mutex::new(None));
             let state = State {
                 idle_since: idle_since.clone(),
+                last_transition: Instant::now(),
+                transition_count: 0,
             };
 
             // Kept alive for the lifetime of the dispatch thread — dropping it
