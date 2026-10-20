@@ -2,6 +2,7 @@ mod config;
 mod idle_watcher;
 mod mouse_injector;
 mod scheduler;
+mod screensaver_inhibit;
 
 use config::Config;
 use mouse_injector::MouseInjector;
@@ -28,6 +29,8 @@ struct AppState {
     jiggling: Arc<AtomicBool>,
     tray_state: Arc<Mutex<TrayState>>,
     app_handle: AppHandle,
+    #[cfg(target_os = "linux")]
+    screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
 }
 
 #[tauri::command]
@@ -53,6 +56,16 @@ fn toggle_jiggle(state: tauri::State<AppState>) -> bool {
     *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
     let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
     refresh_tray(&state.app_handle, next_state, &theme);
+
+    #[cfg(target_os = "linux")]
+    {
+        if now {
+            state.screensaver_inhibitor.inhibit();
+        } else {
+            state.screensaver_inhibitor.uninhibit();
+        }
+    }
+
     now
 }
 
@@ -215,7 +228,17 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             spawn_jiggle_loop(app_handle.clone(), jiggling.clone(), config.clone(), tray_state.clone());
 
-            app.manage(AppState { config, jiggling, tray_state, app_handle });
+            #[cfg(target_os = "linux")]
+            let screensaver_inhibitor = Arc::new(screensaver_inhibit::ScreenSaverInhibitor::new());
+
+            app.manage(AppState {
+                config,
+                jiggling,
+                tray_state,
+                app_handle,
+                #[cfg(target_os = "linux")]
+                screensaver_inhibitor,
+            });
             Ok(())
         })
         .on_window_event(|window, event| {

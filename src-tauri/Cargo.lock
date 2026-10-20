@@ -5126,4 +5126,5 @@ dependencies = [
  "uinput",
  "wayland-client",
  "wayland-protocols",
+ "zbus",
 ]
