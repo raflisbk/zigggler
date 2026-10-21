@@ -1,5 +1,6 @@
 mod config;
 mod idle_watcher;
+mod kwin_idle_simulate;
 mod mouse_injector;
 mod scheduler;
 mod screensaver_inhibit;
@@ -190,6 +191,7 @@ fn spawn_jiggle_loop(
     tray_state: Arc<Mutex<TrayState>>,
 ) {
     use idle_watcher::{IdleWatcher, WaylandIdleWatcher};
+    use kwin_idle_simulate::KwinIdleSimulator;
     use mouse_injector::UinputInjector;
 
     std::thread::spawn(move || {
@@ -204,6 +206,17 @@ fn spawn_jiggle_loop(
         if idle_watcher.is_none() {
             eprintln!(
                 "zzzzziglerrr: compositor gak dukung ext-idle-notify-v1, idle_only diabaikan"
+            );
+        }
+        // KDE/KWin-specific: confirmed resets the seat activity signal every
+        // idle-tracking consumer sees (ActivityWatch included), unlike plain
+        // uinput which the compositor doesn't count as real activity. Fails
+        // open (None) on compositors without org_kde_kwin_idle (Mutter/Sway),
+        // leaving uinput as the fallback cursor nudge.
+        let kwin_idle_simulator = KwinIdleSimulator::connect();
+        if kwin_idle_simulator.is_none() {
+            eprintln!(
+                "zzzzziglerrr: compositor gak dukung org_kde_kwin_idle, pake uinput doang"
             );
         }
 
@@ -242,6 +255,9 @@ fn spawn_jiggle_loop(
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
                 injector.jiggle();
+                if let Some(simulator) = kwin_idle_simulator.as_ref() {
+                    simulator.simulate();
+                }
                 if jiggling.load(Ordering::SeqCst) {
                     *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Waiting;
                     refresh_tray(&app_handle, TrayState::Waiting, &theme);
