@@ -34,11 +34,21 @@ struct AppState {
     screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
 }
 
+fn log_toggle(jiggling: bool) {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    eprintln!("zzzzziglerrr[toggle] t={secs} jiggling={jiggling}");
+}
+
 /// Shared by the `toggle_jiggle` command and the tray menu's "Toggle Jiggle"
 /// checkbox so both paths flip the same state the same way.
 fn do_toggle_jiggle(state: &AppState) -> bool {
     let now = !state.jiggling.load(Ordering::SeqCst);
     state.jiggling.store(now, Ordering::SeqCst);
+    log_toggle(now);
     let next_state = if now { TrayState::Waiting } else { TrayState::Off };
     *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
     let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
