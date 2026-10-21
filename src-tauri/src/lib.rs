@@ -12,7 +12,7 @@ use std::time::Duration;
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 const TRAY_ID: &str = "main-tray";
 const MAIN_WINDOW: &str = "main";
@@ -54,12 +54,22 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
         }
     }
 
+    // So any open window's switch updates live regardless of which path
+    // (command or tray menu) triggered the toggle — fixes tray/dashboard
+    // getting out of sync.
+    let _ = state.app_handle.emit("jiggle-changed", now);
+
     now
 }
 
 #[tauri::command]
 fn get_config(state: tauri::State<AppState>) -> Config {
     state.config.lock().expect("config mutex poisoned").clone()
+}
+
+#[tauri::command]
+fn get_status(state: tauri::State<AppState>) -> bool {
+    state.jiggling.load(Ordering::SeqCst)
 }
 
 #[tauri::command]
@@ -330,7 +340,7 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![get_config, set_config, toggle_jiggle])
+        .invoke_handler(tauri::generate_handler![get_config, set_config, toggle_jiggle, get_status])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
