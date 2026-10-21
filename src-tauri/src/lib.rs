@@ -341,6 +341,15 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![get_config, set_config, toggle_jiggle, get_status])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|_app_handle, event| {
+            // Default Tauri/tao behavior on Linux exits the whole process
+            // once no window is visible — hiding to tray on minimize/close
+            // would otherwise kill the app outright. Only an explicit
+            // `app.exit(0)` (tray "Keluar") should actually quit.
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                api.prevent_exit();
+            }
+        });
 }
