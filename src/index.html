@@ -666,8 +666,20 @@
 
   window.addEventListener("resize", renderDeco);
 
-  invoke("get_config").then(function(loaded){
+  var tauriEvent = window.__TAURI__ && window.__TAURI__.event;
+  if (tauriEvent) {
+    tauriEvent.listen("jiggle-changed", function(e){
+      jiggleOn = !!e.payload;
+      setSwitch(mainSwitch, jiggleOn);
+      updateChip();
+    });
+  }
+
+  Promise.all([invoke("get_config"), invoke("get_status")]).then(function(results){
+    var loaded = results[0];
+    var status = results[1];
     if (loaded) config = Object.assign({}, DEFAULT_CONFIG, loaded);
+    if (typeof status === "boolean") jiggleOn = status;
     applyConfigToUi();
     renderDeco();
     setTimeout(renderDeco, 50);
