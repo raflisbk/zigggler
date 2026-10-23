@@ -294,6 +294,12 @@
             <div class="switch" id="autostartSwitch" role="switch" aria-checked="false" tabindex="0"><div class="knob"></div></div>
           </div>
         </div>
+        <div class="field">
+          <div class="t" id="randomBreaksLabelT"></div>
+          <div class="row"><span class="idle-copy" id="randomBreaksDesc"></span>
+            <div class="switch" id="randomBreaksSwitch" role="switch" aria-checked="false" tabindex="0"><div class="knob"></div></div>
+          </div>
+        </div>
         <div class="status-row">
           <span class="status-chip" id="statusChip"><span class="pulse"></span><span id="statusChipText"></span></span>
           <span class="tray-preview" id="trayPreview"></span>
@@ -337,6 +343,8 @@
       idleDesc: "anteng kalau lo pegang mouse",
       autostartLabelT: "mulai bareng login",
       autostartDesc: "auto nyala pas lo login",
+      randomBreaksLabelT: "jeda acak",
+      randomBreaksDesc: "sesekali berhenti sebentar, biar natural",
       themeViewTitle: "cari tema",
       backLabel: "cus balik",
       chipOn: "lagi nge-jig",
@@ -352,6 +360,8 @@
       idleDesc: "stays quiet while you're using the mouse",
       autostartLabelT: "start with login",
       autostartDesc: "auto-launches when you log in",
+      randomBreaksLabelT: "random breaks",
+      randomBreaksDesc: "pauses now and then, keeps it natural",
       themeViewTitle: "pick a theme",
       backLabel: "back",
       chipOn: "jigglin'",
@@ -367,6 +377,8 @@
       idleDesc: "マウス触ってる時は邪魔しない",
       autostartLabelT: "ログイン時に自動起動",
       autostartDesc: "ログインしたら自動でオン",
+      randomBreaksLabelT: "ランダム休憩",
+      randomBreaksDesc: "たまに休む、不自然にならないように",
       themeViewTitle: "テーマを選ぶ",
       backLabel: "戻る",
       chipOn: "ジグってる",
@@ -386,6 +398,7 @@
   var config = Object.assign({}, DEFAULT_CONFIG);
   var jiggleOn = false;
   var autostartOn = false;
+  var randomBreaksOn = false;
 
   var tauriInvoke = (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) || null;
   if (!tauriInvoke) {
@@ -430,6 +443,8 @@
     document.getElementById("idleDesc").textContent = d.idleDesc;
     document.getElementById("autostartLabelT").textContent = d.autostartLabelT;
     document.getElementById("autostartDesc").textContent = d.autostartDesc;
+    document.getElementById("randomBreaksLabelT").textContent = d.randomBreaksLabelT;
+    document.getElementById("randomBreaksDesc").textContent = d.randomBreaksDesc;
     document.getElementById("themeViewTitle").textContent = d.themeViewTitle;
     document.getElementById("backLabel").textContent = d.backLabel;
     document.querySelectorAll(".theme-pick .nm").forEach(function(span, idx){
@@ -457,6 +472,7 @@
     document.getElementById("intervalVal").textContent = config.intervalSecs + "s";
     setSwitch(idleSwitch, config.idleOnly);
     setSwitch(autostartSwitch, autostartOn);
+    setSwitch(randomBreaksSwitch, randomBreaksOn);
     setSwitch(mainSwitch, jiggleOn);
     updateChip();
   }
@@ -548,6 +564,17 @@
   });
   autostartSwitch.addEventListener("keydown", function(e){
     if (e.key === " " || e.key === "Enter") { e.preventDefault(); autostartSwitch.click(); }
+  });
+
+  var randomBreaksSwitch = document.getElementById("randomBreaksSwitch");
+  randomBreaksSwitch.addEventListener("click", function(){
+    invoke("toggle_random_breaks").then(function(result){
+      randomBreaksOn = typeof result === "boolean" ? result : !randomBreaksOn;
+      setSwitch(randomBreaksSwitch, randomBreaksOn);
+    });
+  });
+  randomBreaksSwitch.addEventListener("keydown", function(e){
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); randomBreaksSwitch.click(); }
   });
 
   var slider = document.getElementById("intervalSlider");
@@ -704,6 +731,10 @@
       autostartOn = !!e.payload;
       setSwitch(autostartSwitch, autostartOn);
     });
+    tauriEvent.listen("random-breaks-changed", function(e){
+      randomBreaksOn = !!e.payload;
+      setSwitch(randomBreaksSwitch, randomBreaksOn);
+    });
   }
 
   Promise.all([invoke("get_config"), invoke("get_status")]).then(function(results){
@@ -713,6 +744,7 @@
     if (status) {
       jiggleOn = !!status.jiggling;
       autostartOn = !!status.autostart;
+      randomBreaksOn = !!status.random_breaks;
     }
     applyConfigToUi();
     renderDeco();
