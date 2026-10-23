@@ -9,6 +9,11 @@ pub struct Config {
     pub locale: String,
     pub interval_secs: u64,
     pub idle_only: bool,
+    /// `#[serde(default)]` so config.json saved before this field existed
+    /// still loads (missing field would otherwise fail the whole struct and
+    /// silently reset every other saved setting back to defaults).
+    #[serde(default)]
+    pub autostart: bool,
 }
 
 impl Default for Config {
@@ -18,6 +23,7 @@ impl Default for Config {
             locale: "id".into(),
             interval_secs: 60,
             idle_only: false,
+            autostart: false,
         }
     }
 }
