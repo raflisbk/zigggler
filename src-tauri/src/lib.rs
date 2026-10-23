@@ -1,3 +1,4 @@
+mod autostart;
 mod config;
 mod idle_watcher;
 mod kwin_idle_simulate;
@@ -31,8 +32,15 @@ struct AppState {
     tray_state: Arc<Mutex<TrayState>>,
     app_handle: AppHandle,
     jiggle_menu_item: CheckMenuItem<tauri::Wry>,
+    autostart_menu_item: CheckMenuItem<tauri::Wry>,
     #[cfg(target_os = "linux")]
     screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
+}
+
+#[derive(serde::Serialize)]
+struct Status {
+    jiggling: bool,
+    autostart: bool,
 }
 
 fn log_toggle(jiggling: bool) {
@@ -73,14 +81,56 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
     now
 }
 
+/// Shared by the `toggle_autostart` command and the tray menu's "Autostart"
+/// checkbox — writes/removes `~/.config/autostart/zzzzziglerrr.desktop` to
+/// match the new state, persists it in `Config`, and keeps the tray
+/// checkbox + any open window's switch in sync.
+#[cfg(target_os = "linux")]
+fn do_toggle_autostart(state: &AppState) -> bool {
+    let now = {
+        let mut config = state.config.lock().expect("config mutex poisoned");
+        config.autostart = !config.autostart;
+        let now = config.autostart;
+        let _ = config.save();
+        now
+    };
+
+    let result = if now {
+        autostart::enable()
+    } else {
+        autostart::disable()
+    };
+    if let Err(err) = result {
+        eprintln!("zzzzziglerrr[autostart] gagal update .desktop: {err}");
+    }
+
+    let _ = state.autostart_menu_item.set_checked(now);
+    let _ = state.app_handle.emit("autostart-changed", now);
+    now
+}
+
+#[tauri::command]
+fn toggle_autostart(state: tauri::State<AppState>) -> bool {
+    #[cfg(target_os = "linux")]
+    return do_toggle_autostart(&state);
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = state;
+        false
+    }
+}
+
 #[tauri::command]
 fn get_config(state: tauri::State<AppState>) -> Config {
     state.config.lock().expect("config mutex poisoned").clone()
 }
 
 #[tauri::command]
-fn get_status(state: tauri::State<AppState>) -> bool {
-    state.jiggling.load(Ordering::SeqCst)
+fn get_status(state: tauri::State<AppState>) -> Status {
+    Status {
+        jiggling: state.jiggling.load(Ordering::SeqCst),
+        autostart: state.config.lock().expect("config mutex poisoned").autostart,
+    }
 }
 
 #[tauri::command]
@@ -292,13 +342,27 @@ pub fn run() {
 
             let jiggle_menu_item =
                 CheckMenuItem::with_id(app, "toggle_jiggle", "Toggle Jiggle", true, false, None::<&str>)?;
+            let autostart_menu_item = CheckMenuItem::with_id(
+                app,
+                "toggle_autostart",
+                "Autostart",
+                true,
+                config.lock().expect("config mutex poisoned").autostart,
+                None::<&str>,
+            )?;
             let settings_item =
                 MenuItem::with_id(app, "open_settings", "Buka Settings", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
             let quit_item = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
             let menu = Menu::with_items(
                 app,
-                &[&jiggle_menu_item, &settings_item, &separator, &quit_item],
+                &[
+                    &jiggle_menu_item,
+                    &autostart_menu_item,
+                    &settings_item,
+                    &separator,
+                    &quit_item,
+                ],
             )?;
 
             TrayIconBuilder::with_id(TRAY_ID)
@@ -308,6 +372,10 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id().as_ref() {
                     "toggle_jiggle" => {
                         do_toggle_jiggle(&app.state::<AppState>());
+                    }
+                    #[cfg(target_os = "linux")]
+                    "toggle_autostart" => {
+                        do_toggle_autostart(&app.state::<AppState>());
                     }
                     "open_settings" => focus_main_window(app),
                     "quit" => {
@@ -349,12 +417,28 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             let screensaver_inhibitor = Arc::new(screensaver_inhibit::ScreenSaverInhibitor::new());
 
+            // Re-sync the .desktop file to match saved config on every
+            // launch — covers reinstalls (binary path changed) or a file
+            // that got deleted/edited outside the app.
+            #[cfg(target_os = "linux")]
+            {
+                let result = if config.lock().expect("config mutex poisoned").autostart {
+                    autostart::enable()
+                } else {
+                    autostart::disable()
+                };
+                if let Err(err) = result {
+                    eprintln!("zzzzziglerrr[autostart] gagal sync .desktop pas startup: {err}");
+                }
+            }
+
             app.manage(AppState {
                 config,
                 jiggling,
                 tray_state,
                 app_handle,
                 jiggle_menu_item,
+                autostart_menu_item,
                 #[cfg(target_os = "linux")]
                 screensaver_inhibitor,
             });
@@ -366,7 +450,13 @@ pub fn run() {
                 let _ = window.hide();
             }
         })
-        .invoke_handler(tauri::generate_handler![get_config, set_config, toggle_jiggle, get_status])
+        .invoke_handler(tauri::generate_handler![
+            get_config,
+            set_config,
+            toggle_jiggle,
+            toggle_autostart,
+            get_status
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|_app_handle, event| {
