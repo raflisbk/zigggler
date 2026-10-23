@@ -3,7 +3,7 @@
 ![release](https://img.shields.io/github/v/release/raflisbk/zigggler?label=release)
 ![CI](https://github.com/raflisbk/zigggler/actions/workflows/ci.yml/badge.svg)
 ![platform](https://img.shields.io/badge/platform-Linux%20%7C%20KDE%2FKWin-blue)
-![license](https://img.shields.io/badge/license-unreleased-lightgrey)
+![license](https://img.shields.io/github/license/raflisbk/zigggler)
 
 **Gerakkan kursor seperti aktivitas asli. Dibuat untuk KDE Wayland.**
 
@@ -113,5 +113,4 @@ Autostart saat login dan dukungan compositor/platform lain masih dalam pengerjaa
 
 ## Lisensi
 
-Belum ada lisensi yang dipublikasikan — ini masih personal tool, belum rilis open-source
-resmi. Anggap source code "all rights reserved" sampai lisensi ditambahkan.
+[MIT](LICENSE)

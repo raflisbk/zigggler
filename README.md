@@ -3,7 +3,7 @@
 ![release](https://img.shields.io/github/v/release/raflisbk/zigggler?label=release)
 ![CI](https://github.com/raflisbk/zigggler/actions/workflows/ci.yml/badge.svg)
 ![platform](https://img.shields.io/badge/platform-Linux%20%7C%20KDE%2FKWin-blue)
-![license](https://img.shields.io/badge/license-unreleased-lightgrey)
+![license](https://img.shields.io/github/license/raflisbk/zigggler)
 
 **Move the cursor like it's real. Built for KDE Wayland.**
 
@@ -113,5 +113,4 @@ runs. Autostart-on-login and support for other compositors/platforms are in prog
 
 ## License
 
-No license has been published yet — this is currently a personal tool, not a published
-open-source release. Treat the source as "all rights reserved" until a license is added.
+[MIT](LICENSE)
