@@ -1,6 +1,6 @@
 [package]
 name = "zzzzziglerrr"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cross-platform mouse jiggler + idle-aware presence tool"
 authors = ["Mohamad Rafli Agung Subekti"]
 edition = "2024"
