@@ -14,6 +14,11 @@ pub struct Config {
     /// silently reset every other saved setting back to defaults).
     #[serde(default)]
     pub autostart: bool,
+    /// Same `#[serde(default)]` reasoning as `autostart` — config.json saved
+    /// before this field existed must still load with every other setting
+    /// intact.
+    #[serde(default)]
+    pub random_breaks: bool,
 }
 
 impl Default for Config {
@@ -24,6 +29,7 @@ impl Default for Config {
             interval_secs: 60,
             idle_only: false,
             autostart: false,
+            random_breaks: false,
         }
     }
 }

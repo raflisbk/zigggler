@@ -24,6 +24,10 @@ enum TrayState {
     Off,
     Waiting,
     Jiggling,
+    /// On a random break — distinct from `Off` (toggle is still on, this is
+    /// temporary) and from `Waiting` (not gated on idle, gated on the break
+    /// schedule).
+    Break,
 }
 
 struct AppState {
@@ -33,6 +37,7 @@ struct AppState {
     app_handle: AppHandle,
     jiggle_menu_item: CheckMenuItem<tauri::Wry>,
     autostart_menu_item: CheckMenuItem<tauri::Wry>,
+    random_breaks_menu_item: CheckMenuItem<tauri::Wry>,
     #[cfg(target_os = "linux")]
     screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
 }
@@ -41,6 +46,7 @@ struct AppState {
 struct Status {
     jiggling: bool,
     autostart: bool,
+    random_breaks: bool,
 }
 
 fn log_toggle(jiggling: bool) {
@@ -120,6 +126,28 @@ fn toggle_autostart(state: tauri::State<AppState>) -> bool {
     }
 }
 
+/// Shared by the `toggle_random_breaks` command and the tray menu's "Jeda
+/// Acak" checkbox. Only flips the config flag + UI state — the jiggle loop
+/// thread reads `Config.random_breaks` each tick and owns the actual
+/// `RandomBreakScheduler` instance, same split as `idle_only`.
+fn do_toggle_random_breaks(state: &AppState) -> bool {
+    let now = {
+        let mut config = state.config.lock().expect("config mutex poisoned");
+        config.random_breaks = !config.random_breaks;
+        let now = config.random_breaks;
+        let _ = config.save();
+        now
+    };
+    let _ = state.random_breaks_menu_item.set_checked(now);
+    let _ = state.app_handle.emit("random-breaks-changed", now);
+    now
+}
+
+#[tauri::command]
+fn toggle_random_breaks(state: tauri::State<AppState>) -> bool {
+    do_toggle_random_breaks(&state)
+}
+
 #[tauri::command]
 fn get_config(state: tauri::State<AppState>) -> Config {
     state.config.lock().expect("config mutex poisoned").clone()
@@ -127,9 +155,11 @@ fn get_config(state: tauri::State<AppState>) -> Config {
 
 #[tauri::command]
 fn get_status(state: tauri::State<AppState>) -> Status {
+    let config = state.config.lock().expect("config mutex poisoned");
     Status {
         jiggling: state.jiggling.load(Ordering::SeqCst),
-        autostart: state.config.lock().expect("config mutex poisoned").autostart,
+        autostart: config.autostart,
+        random_breaks: config.random_breaks,
     }
 }
 
@@ -184,6 +214,10 @@ fn badge_for(state: TrayState, theme: &str) -> Option<(u8, u8, u8, u8)> {
             let (r, g, b) = theme_swatch(theme);
             Some((r, g, b, 255))
         }
+        // Neutral gray, independent of theme color, so a break reads as
+        // visually distinct from both "off" (dimmed whole icon) and
+        // "jiggling"/"waiting" (theme-colored badge).
+        TrayState::Break => Some((0x90, 0x90, 0x90, 220)),
     }
 }
 
@@ -281,10 +315,23 @@ fn spawn_jiggle_loop(
         }
 
         let mut consecutive_closed_ticks: u64 = 0;
+        // Created lazily the first time `random_breaks` is on, then kept
+        // alive for the rest of the process — quota history and in-flight
+        // breaks persist across the toggle being flipped off and back on
+        // (per docs/goals.md), resetting only on process restart. `tick()`
+        // simply isn't called while the toggle is off, so time doesn't
+        // advance for it during that window either.
+        let mut random_break_scheduler: Option<scheduler::RandomBreakScheduler> = None;
+
         loop {
-            let (interval_secs, idle_only, theme) = {
+            let (interval_secs, idle_only, random_breaks, theme) = {
                 let config = config.lock().expect("config mutex poisoned");
-                (config.interval_secs, config.idle_only, config.theme.clone())
+                (
+                    config.interval_secs,
+                    config.idle_only,
+                    config.random_breaks,
+                    config.theme.clone(),
+                )
             };
             std::thread::sleep(Duration::from_secs(interval_secs.max(1)));
 
@@ -311,7 +358,20 @@ fn spawn_jiggle_loop(
                 }
             }
 
-            if gate_open {
+            // Random-break gate is additional to (not instead of) idle_only
+            // — it can suspend jiggling even while the main toggle and
+            // idle_only gate both say go.
+            let on_break = if random_breaks {
+                let now = std::time::Instant::now();
+                let sched = random_break_scheduler
+                    .get_or_insert_with(|| scheduler::RandomBreakScheduler::new(now));
+                sched.tick(now);
+                sched.state() == scheduler::BreakState::Break
+            } else {
+                false
+            };
+
+            if gate_open && !on_break {
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
                 injector.jiggle();
@@ -322,6 +382,9 @@ fn spawn_jiggle_loop(
                     *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Waiting;
                     refresh_tray(&app_handle, TrayState::Waiting, &theme);
                 }
+            } else if gate_open && on_break {
+                *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Break;
+                refresh_tray(&app_handle, TrayState::Break, &theme);
             }
         }
     });
@@ -350,6 +413,14 @@ pub fn run() {
                 config.lock().expect("config mutex poisoned").autostart,
                 None::<&str>,
             )?;
+            let random_breaks_menu_item = CheckMenuItem::with_id(
+                app,
+                "toggle_random_breaks",
+                "Jeda Acak",
+                true,
+                config.lock().expect("config mutex poisoned").random_breaks,
+                None::<&str>,
+            )?;
             let settings_item =
                 MenuItem::with_id(app, "open_settings", "Buka Settings", true, None::<&str>)?;
             let separator = PredefinedMenuItem::separator(app)?;
@@ -359,6 +430,7 @@ pub fn run() {
                 &[
                     &jiggle_menu_item,
                     &autostart_menu_item,
+                    &random_breaks_menu_item,
                     &settings_item,
                     &separator,
                     &quit_item,
@@ -376,6 +448,9 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     "toggle_autostart" => {
                         do_toggle_autostart(&app.state::<AppState>());
+                    }
+                    "toggle_random_breaks" => {
+                        do_toggle_random_breaks(&app.state::<AppState>());
                     }
                     "open_settings" => focus_main_window(app),
                     "quit" => {
@@ -439,6 +514,7 @@ pub fn run() {
                 app_handle,
                 jiggle_menu_item,
                 autostart_menu_item,
+                random_breaks_menu_item,
                 #[cfg(target_os = "linux")]
                 screensaver_inhibitor,
             });
@@ -455,6 +531,7 @@ pub fn run() {
             set_config,
             toggle_jiggle,
             toggle_autostart,
+            toggle_random_breaks,
             get_status
         ])
         .build(tauri::generate_context!())
