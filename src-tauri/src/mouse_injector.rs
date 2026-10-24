@@ -74,7 +74,7 @@ pub use windows::SendInputInjector;
 mod windows {
     use super::MouseInjector;
     use ::windows::Win32::UI::Input::KeyboardAndMouse::{
-        SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEINPUT,
+        INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEINPUT, SendInput,
     };
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -116,7 +116,17 @@ mod windows {
     impl MouseInjector for SendInputInjector {
         fn jiggle(&self) {
             let inputs = [relative_move(2, 2), relative_move(-2, -2)];
+            #[cfg(feature = "windows-diagnostics")]
+            let attempt = crate::windows_diagnostics::before();
             let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
+            #[cfg(feature = "windows-diagnostics")]
+            let error = if sent as usize != inputs.len() {
+                Some(unsafe { ::windows::Win32::Foundation::GetLastError() }.0)
+            } else {
+                None
+            };
+            #[cfg(feature = "windows-diagnostics")]
+            crate::windows_diagnostics::after(attempt, inputs.len(), sent, error);
             if sent as usize == inputs.len() {
                 log_ts("jiggle sent ok");
             } else {
