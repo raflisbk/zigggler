@@ -66,11 +66,17 @@ mod windows {
     const RUN_KEY_PATH: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     const VALUE_NAME: &str = "zzzzziglerrr";
 
-    fn exec_path() -> String {
-        std::env::current_exe()
-            .ok()
-            .and_then(|path| path.to_str().map(str::to_string))
-            .unwrap_or_else(|| "zzzzziglerrr".into())
+    /// Quoted so Windows doesn't try to resolve an unquoted path containing
+    /// spaces (e.g. `C:\Program Files\...`) as several candidate binaries
+    /// (classic autostart/service "binary planting" vector) — propagates
+    /// an error instead of silently falling back to a bare unqualified
+    /// name if `current_exe()` fails.
+    fn exec_path() -> io::Result<String> {
+        let path = std::env::current_exe()?;
+        let path = path
+            .to_str()
+            .ok_or_else(|| io::Error::other("executable path isn't valid UTF-8"))?;
+        Ok(format!("\"{path}\""))
     }
 
     /// Same interface as the Linux `.desktop` arm, backed by the standard
@@ -78,7 +84,7 @@ mod windows {
     pub fn enable() -> io::Result<()> {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let (run_key, _) = hkcu.create_subkey(RUN_KEY_PATH)?;
-        run_key.set_value(VALUE_NAME, &exec_path())
+        run_key.set_value(VALUE_NAME, &exec_path()?)
     }
 
     /// Missing key/value is not an error, same reasoning as the Linux arm.
