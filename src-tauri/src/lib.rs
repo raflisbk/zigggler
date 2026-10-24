@@ -5,6 +5,7 @@ mod kwin_idle_simulate;
 mod mouse_injector;
 mod scheduler;
 mod screensaver_inhibit;
+mod windows_inhibit;
 
 use config::Config;
 use mouse_injector::MouseInjector;
@@ -40,6 +41,8 @@ struct AppState {
     random_breaks_menu_item: CheckMenuItem<tauri::Wry>,
     #[cfg(target_os = "linux")]
     screensaver_inhibitor: Arc<screensaver_inhibit::ScreenSaverInhibitor>,
+    #[cfg(target_os = "windows")]
+    windows_inhibitor: Arc<windows_inhibit::WindowsInhibitor>,
 }
 
 #[derive(serde::Serialize)]
@@ -78,6 +81,14 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
             state.screensaver_inhibitor.uninhibit();
         }
     }
+    #[cfg(target_os = "windows")]
+    {
+        if now {
+            state.windows_inhibitor.inhibit();
+        } else {
+            state.windows_inhibitor.uninhibit();
+        }
+    }
 
     // So any open window's switch updates live regardless of which path
     // (command or tray menu) triggered the toggle — fixes tray/dashboard
@@ -88,10 +99,11 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
 }
 
 /// Shared by the `toggle_autostart` command and the tray menu's "Autostart"
-/// checkbox — writes/removes `~/.config/autostart/zzzzziglerrr.desktop` to
-/// match the new state, persists it in `Config`, and keeps the tray
-/// checkbox + any open window's switch in sync.
-#[cfg(target_os = "linux")]
+/// checkbox — writes/removes the platform autostart entry (`.desktop` file
+/// on Linux, registry Run key on Windows) to match the new state, persists
+/// it in `Config`, and keeps the tray checkbox + any open window's switch
+/// in sync.
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn do_toggle_autostart(state: &AppState) -> bool {
     let now = {
         let mut config = state.config.lock().expect("config mutex poisoned");
@@ -117,9 +129,9 @@ fn do_toggle_autostart(state: &AppState) -> bool {
 
 #[tauri::command]
 fn toggle_autostart(state: tauri::State<AppState>) -> bool {
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "windows"))]
     return do_toggle_autostart(&state);
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         let _ = state;
         false
@@ -265,7 +277,7 @@ fn focus_main_window(app: &AppHandle) {
     }
 }
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn log_tick(idle_only: bool, idle_seconds: u64, gate_open: bool) {
     use std::time::{SystemTime, UNIX_EPOCH};
     let secs = SystemTime::now()
@@ -277,41 +289,66 @@ fn log_tick(idle_only: bool, idle_seconds: u64, gate_open: bool) {
     );
 }
 
+/// Linux: `UinputInjector`, infallible-ish (only fails if `/dev/uinput`
+/// isn't accessible — udev rule missing). Windows: `SendInputInjector`,
+/// stateless and always succeeds, no device handle to create.
 #[cfg(target_os = "linux")]
+fn build_injector() -> Option<Box<dyn MouseInjector>> {
+    use mouse_injector::UinputInjector;
+    match UinputInjector::new() {
+        Ok(injector) => Some(Box::new(injector)),
+        Err(err) => {
+            eprintln!("zzzzziglerrr: gagal bikin uinput device: {err}");
+            None
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn build_injector() -> Option<Box<dyn MouseInjector>> {
+    use mouse_injector::SendInputInjector;
+    Some(Box::new(SendInputInjector::new()))
+}
+
+#[cfg(target_os = "linux")]
+fn build_idle_watcher() -> Option<Box<dyn idle_watcher::IdleWatcher>> {
+    use idle_watcher::WaylandIdleWatcher;
+    let watcher = WaylandIdleWatcher::spawn();
+    if watcher.is_none() {
+        eprintln!("zzzzziglerrr: compositor gak dukung ext-idle-notify-v1, idle_only diabaikan");
+    }
+    watcher.map(|w| Box::new(w) as Box<dyn idle_watcher::IdleWatcher>)
+}
+
+#[cfg(target_os = "windows")]
+fn build_idle_watcher() -> Option<Box<dyn idle_watcher::IdleWatcher>> {
+    use idle_watcher::WindowsIdleWatcher;
+    Some(Box::new(WindowsIdleWatcher::new()))
+}
+
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 fn spawn_jiggle_loop(
     app_handle: AppHandle,
     jiggling: Arc<AtomicBool>,
     config: Arc<Mutex<Config>>,
     tray_state: Arc<Mutex<TrayState>>,
 ) {
-    use idle_watcher::{IdleWatcher, WaylandIdleWatcher};
-    use kwin_idle_simulate::KwinIdleSimulator;
-    use mouse_injector::UinputInjector;
-
     std::thread::spawn(move || {
-        let injector = match UinputInjector::new() {
-            Ok(injector) => injector,
-            Err(err) => {
-                eprintln!("zzzzziglerrr: gagal bikin uinput device: {err}");
-                return;
-            }
+        let Some(injector) = build_injector() else {
+            return;
         };
-        let idle_watcher = WaylandIdleWatcher::spawn();
-        if idle_watcher.is_none() {
-            eprintln!(
-                "zzzzziglerrr: compositor gak dukung ext-idle-notify-v1, idle_only diabaikan"
-            );
-        }
-        // KDE/KWin-specific: confirmed resets the seat activity signal every
-        // idle-tracking consumer sees (ActivityWatch included), unlike plain
-        // uinput which the compositor doesn't count as real activity. Fails
-        // open (None) on compositors without org_kde_kwin_idle (Mutter/Sway),
-        // leaving uinput as the fallback cursor nudge.
-        let kwin_idle_simulator = KwinIdleSimulator::connect();
+        let idle_watcher = build_idle_watcher();
+
+        // KDE/KWin-specific second signal: confirmed resets the seat
+        // activity signal every idle-tracking consumer sees (ActivityWatch
+        // included), unlike plain uinput which the compositor doesn't
+        // count as real activity. No equivalent exists/is needed on
+        // Windows — see idle_watcher::WindowsIdleWatcher's doc comment.
+        #[cfg(target_os = "linux")]
+        let kwin_idle_simulator = kwin_idle_simulate::KwinIdleSimulator::connect();
+        #[cfg(target_os = "linux")]
         if kwin_idle_simulator.is_none() {
-            eprintln!(
-                "zzzzziglerrr: compositor gak dukung org_kde_kwin_idle, pake uinput doang"
-            );
+            eprintln!("zzzzziglerrr: compositor gak dukung org_kde_kwin_idle, pake uinput doang");
         }
 
         let mut consecutive_closed_ticks: u64 = 0;
@@ -375,6 +412,7 @@ fn spawn_jiggle_loop(
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
                 injector.jiggle();
+                #[cfg(target_os = "linux")]
                 if let Some(simulator) = kwin_idle_simulator.as_ref() {
                     simulator.simulate();
                 }
@@ -445,7 +483,7 @@ pub fn run() {
                     "toggle_jiggle" => {
                         do_toggle_jiggle(&app.state::<AppState>());
                     }
-                    #[cfg(target_os = "linux")]
+                    #[cfg(any(target_os = "linux", target_os = "windows"))]
                     "toggle_autostart" => {
                         do_toggle_autostart(&app.state::<AppState>());
                     }
@@ -456,6 +494,8 @@ pub fn run() {
                     "quit" => {
                         #[cfg(target_os = "linux")]
                         app.state::<AppState>().screensaver_inhibitor.uninhibit();
+                        #[cfg(target_os = "windows")]
+                        app.state::<AppState>().windows_inhibitor.uninhibit();
                         app.exit(0);
                     }
                     _ => {}
@@ -486,16 +526,19 @@ pub fn run() {
                 }
             }
 
-            #[cfg(target_os = "linux")]
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             spawn_jiggle_loop(app_handle.clone(), jiggling.clone(), config.clone(), tray_state.clone());
 
             #[cfg(target_os = "linux")]
             let screensaver_inhibitor = Arc::new(screensaver_inhibit::ScreenSaverInhibitor::new());
+            #[cfg(target_os = "windows")]
+            let windows_inhibitor = Arc::new(windows_inhibit::WindowsInhibitor::new());
 
-            // Re-sync the .desktop file to match saved config on every
-            // launch — covers reinstalls (binary path changed) or a file
-            // that got deleted/edited outside the app.
-            #[cfg(target_os = "linux")]
+            // Re-sync the autostart entry (.desktop on Linux, registry Run
+            // key on Windows) to match saved config on every launch — covers
+            // reinstalls (binary path changed) or an entry that got
+            // deleted/edited outside the app.
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
                 let result = if config.lock().expect("config mutex poisoned").autostart {
                     autostart::enable()
@@ -503,7 +546,7 @@ pub fn run() {
                     autostart::disable()
                 };
                 if let Err(err) = result {
-                    eprintln!("zzzzziglerrr[autostart] gagal sync .desktop pas startup: {err}");
+                    eprintln!("zzzzziglerrr[autostart] gagal sync autostart pas startup: {err}");
                 }
             }
 
@@ -517,6 +560,8 @@ pub fn run() {
                 random_breaks_menu_item,
                 #[cfg(target_os = "linux")]
                 screensaver_inhibitor,
+                #[cfg(target_os = "windows")]
+                windows_inhibitor,
             });
             Ok(())
         })
