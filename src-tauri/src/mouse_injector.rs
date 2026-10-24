@@ -66,3 +66,62 @@ mod linux {
         }
     }
 }
+
+#[cfg(target_os = "windows")]
+pub use windows::SendInputInjector;
+
+#[cfg(target_os = "windows")]
+mod windows {
+    use super::MouseInjector;
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{
+        SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_MOVE, MOUSEINPUT,
+    };
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn log_ts(msg: &str) {
+        let secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        eprintln!("zzzzziglerrr[mouse_injector] t={secs} {msg}");
+    }
+
+    fn relative_move(dx: i32, dy: i32) -> INPUT {
+        INPUT {
+            r#type: INPUT_MOUSE,
+            Anonymous: INPUT_0 {
+                mi: MOUSEINPUT {
+                    dx,
+                    dy,
+                    mouseData: 0,
+                    dwFlags: MOUSEEVENTF_MOVE,
+                    time: 0,
+                    dwExtraInfo: 0,
+                },
+            },
+        }
+    }
+
+    /// `SendInput` relative-move nudge — same ±2px-then-back pattern as the
+    /// Linux `UinputInjector`. Stateless (no persistent device handle like
+    /// uinput needs).
+    pub struct SendInputInjector;
+
+    impl SendInputInjector {
+        pub fn new() -> Self {
+            Self
+        }
+    }
+
+    impl MouseInjector for SendInputInjector {
+        fn jiggle(&self) {
+            let inputs = [relative_move(2, 2), relative_move(-2, -2)];
+            let sent = unsafe { SendInput(&inputs, std::mem::size_of::<INPUT>() as i32) };
+            if sent as usize == inputs.len() {
+                log_ts("jiggle sent ok");
+            } else {
+                log_ts("jiggle FAILED: SendInput reported fewer events sent than expected");
+            }
+        }
+    }
+}

@@ -202,3 +202,46 @@ mod linux {
         }
     }
 }
+
+#[cfg(target_os = "windows")]
+pub use windows::WindowsIdleWatcher;
+
+#[cfg(target_os = "windows")]
+mod windows {
+    use super::IdleWatcher;
+    use ::windows::Win32::System::SystemInformation::GetTickCount;
+    use ::windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+
+    /// `GetLastInputInfo` (user32) — milliseconds since the last input event
+    /// system-wide. Unlike Linux's `ext-idle-notify-v1` (which doesn't count
+    /// synthetic uinput as activity, requiring the separate
+    /// `org_kde_kwin_idle.simulate_user_activity` signal), web research
+    /// suggests `SendInput` directly resets this counter since both paths
+    /// go through the same low-level input queue — **not yet verified on
+    /// real Windows hardware**. If that assumption turns out false, a
+    /// second reset signal analogous to `kwin_idle_simulate` would be
+    /// needed here too.
+    pub struct WindowsIdleWatcher;
+
+    impl WindowsIdleWatcher {
+        pub fn new() -> Self {
+            Self
+        }
+    }
+
+    impl IdleWatcher for WindowsIdleWatcher {
+        fn idle_seconds(&self) -> u64 {
+            let mut info = LASTINPUTINFO {
+                cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+                dwTime: 0,
+            };
+            if unsafe { GetLastInputInfo(&mut info) }.0 == 0 {
+                // Call failed — fail open rather than silently blocking
+                // idle_only forever.
+                return u64::MAX;
+            }
+            let now = unsafe { GetTickCount() };
+            now.wrapping_sub(info.dwTime) as u64 / 1000
+        }
+    }
+}
