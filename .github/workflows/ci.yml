@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +33,8 @@ jobs:
 
       - name: Cache cargo registry and build artifacts
         uses: Swatinem/rust-cache@v2
+        with:
+          key: linux
 
       - name: Check Cargo.toml exists
         id: has_cargo
@@ -55,4 +57,74 @@ jobs:
 
       - name: No Rust project yet
         if: steps.has_cargo.outputs.exists == 'false'
+        run: echo "No Cargo.toml found yet — skipping build/test. This passes trivially until rust-core scaffolds the project."
+
+  build-windows:
+    # Windows-native MouseInjector/IdleWatcher/autostart/screensaver-inhibit are still
+    # being written (see docs/goals.md) — this job is expected to fail compilation
+    # until that lands. Kept separate from build-linux so one platform's red build
+    # never blocks or hides the other's status.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo registry and build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: windows
+
+      - name: Check Cargo.toml exists
+        id: has_cargo
+        shell: bash
+        run: |
+          if [ -f Cargo.toml ] || [ -f src-tauri/Cargo.toml ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: cargo build
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: cargo build --verbose --locked
+        working-directory: ${{ hashFiles('src-tauri/Cargo.toml') != '' && 'src-tauri' || '.' }}
+
+      - name: cargo test
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: cargo test --verbose --locked
+        working-directory: ${{ hashFiles('src-tauri/Cargo.toml') != '' && 'src-tauri' || '.' }}
+
+      - name: Set up Node.js
+        if: steps.has_cargo.outputs.exists == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: npm install
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: npm install
+
+      - name: tauri build (msi/nsis)
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: npm run tauri build -- --bundles msi,nsis
+
+      - name: Upload Windows installers
+        if: steps.has_cargo.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: ignore
+
+      - name: No Rust project yet
+        if: steps.has_cargo.outputs.exists == 'false'
+        shell: bash
         run: echo "No Cargo.toml found yet — skipping build/test. This passes trivially until rust-core scaffolds the project."
