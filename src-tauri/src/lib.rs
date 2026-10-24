@@ -34,6 +34,14 @@ enum TrayState {
 struct AppState {
     config: Arc<Mutex<Config>>,
     jiggling: Arc<AtomicBool>,
+    /// Set just before the "Keluar" tray item calls `app.exit(0)` — lets
+    /// `RunEvent::ExitRequested` tell a genuine quit apart from Tauri's
+    /// default "no window visible, exit the process" behavior that we
+    /// otherwise suppress to hide-to-tray instead (see `.run()` below). On
+    /// at least Windows, `app.exit(0)` still routes through
+    /// `ExitRequested` — without this flag, the old unconditional
+    /// `prevent_exit()` blocked genuine quits too.
+    quitting: Arc<AtomicBool>,
     tray_state: Arc<Mutex<TrayState>>,
     app_handle: AppHandle,
     jiggle_menu_item: CheckMenuItem<tauri::Wry>,
@@ -438,6 +446,7 @@ pub fn run() {
         .setup(|app| {
             let config = Arc::new(Mutex::new(Config::load()));
             let jiggling = Arc::new(AtomicBool::new(false));
+            let quitting = Arc::new(AtomicBool::new(false));
             let tray_state = Arc::new(Mutex::new(TrayState::Off));
             let app_handle = app.handle().clone();
 
@@ -496,6 +505,9 @@ pub fn run() {
                         app.state::<AppState>().screensaver_inhibitor.uninhibit();
                         #[cfg(target_os = "windows")]
                         app.state::<AppState>().windows_inhibitor.uninhibit();
+                        app.state::<AppState>()
+                            .quitting
+                            .store(true, Ordering::SeqCst);
                         app.exit(0);
                     }
                     _ => {}
@@ -553,6 +565,7 @@ pub fn run() {
             app.manage(AppState {
                 config,
                 jiggling,
+                quitting,
                 tray_state,
                 app_handle,
                 jiggle_menu_item,
@@ -581,13 +594,24 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, event| {
-            // Default Tauri/tao behavior on Linux exits the whole process
-            // once no window is visible — hiding to tray on minimize/close
-            // would otherwise kill the app outright. Only an explicit
-            // `app.exit(0)` (tray "Keluar") should actually quit.
+        .run(|app_handle, event| {
+            // Default Tauri/tao behavior on Linux (and, it turns out,
+            // Windows — this app.exit(0) still routes through
+            // ExitRequested there too) exits the whole process once no
+            // window is visible — hiding to tray on minimize/close would
+            // otherwise kill the app outright. Only suppress the exit when
+            // it's NOT the genuine "Keluar" quit (tracked via
+            // AppState.quitting, set right before that `app.exit(0)` call)
+            // — unconditionally calling prevent_exit() here blocked the
+            // real quit path too on Windows.
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
-                api.prevent_exit();
+                let quitting = app_handle
+                    .state::<AppState>()
+                    .quitting
+                    .load(Ordering::SeqCst);
+                if !quitting {
+                    api.prevent_exit();
+                }
             }
         });
 }
