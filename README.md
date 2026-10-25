@@ -87,6 +87,57 @@ npm run tauri build -- --bundles deb   # produce a release .deb
 
 No frontend build step — the UI is plain HTML/CSS/JS served as-is, no bundler involved.
 
+### Windows idle diagnostics (opt-in)
+
+The `windows-diagnostics` Cargo feature records the real app's idle gate and
+`SendInput` results. It is disabled in normal builds. In PowerShell on the
+Windows desktop, build and test it with:
+
+```powershell
+cargo test --locked --manifest-path src-tauri/Cargo.toml
+cargo test --locked --manifest-path src-tauri/Cargo.toml --features windows-diagnostics
+cargo build --locked --manifest-path src-tauri/Cargo.toml --features windows-diagnostics
+```
+
+Quit the installed app from its tray menu before launching this build. Keep
+ActivityWatch running in the same interactive Windows session; launching the app
+directly inside an SSH session is not equivalent to launching it on the desktop.
+
+```powershell
+$env:ZZZZZIGLERRR_DIAGNOSTICS_LOG = Join-Path $env:TEMP ("jiggler-{0}.jsonl" -f (Get-Date -Format yyyyMMdd-HHmmss))
+try {
+    & .\src-tauri\target\debug\zzzzziglerrr.exe
+} finally {
+    Remove-Item Env:ZZZZZIGLERRR_DIAGNOSTICS_LOG -ErrorAction SilentlyContinue
+}
+```
+
+Use the app's controls to enable jiggling and select settings. For idle-only
+testing, use a 5-second interval, enable idle-only, disable random breaks, and
+leave the desktop untouched for 90 seconds. Review repeated closed gates below
+8 seconds, open gates at or above 8 seconds, and resets following each injection.
+A reset is supported by the raw last-input timestamp changing and idle time
+dropping; `sent == requested` alone is insufficient. Input from another source
+confounds attribution. A 90-second test alone cannot establish ActivityWatch
+coverage beyond its normal 180-second AFK timeout.
+
+Logs contain process/session IDs, effective loop settings, input timestamps,
+API results and per-injection samples. Each injection's follow-up sampling adds
+about one second to the configured interval. The first loop can still use
+settings captured before startup activation; analyze the actual loop settings.
+
+For automated trials, `ZZZZZIGLERRR_DIAGNOSTICS_ENABLE=1` enables the real toggle.
+`ZZZZZIGLERRR_DIAGNOSTICS_CONFIG` optionally names a JSON config applied through
+the normal settings handler: **it overwrites the persistent configuration** and
+can update the autostart entry to the diagnostic executable. Back up and restore
+both the config and original autostart value around every automated trial. Do
+not set these variables globally. Restarting the installed app starts jiggling
+OFF; autostart does not automatically enable it.
+
+This instrumentation does not change the input API or fix Task #14. Current
+controlled trials demonstrate idle resets with idle-only disabled; repeated
+idle-only gating and the historical prolonged-AFK report remain unverified.
+
 ## Why zzzzziglerrr?
 
 |Aspect|zzzzziglerrr|Typical `xdotool`-based jiggler|
