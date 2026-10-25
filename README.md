@@ -134,9 +134,18 @@ both the config and original autostart value around every automated trial. Do
 not set these variables globally. Restarting the installed app starts jiggling
 OFF; autostart does not automatically enable it.
 
-This instrumentation does not change the input API or fix Task #14. Current
-controlled trials demonstrate idle resets with idle-only disabled; repeated
-idle-only gating and the historical prolonged-AFK report remain unverified.
+This instrumentation does not change the input API or establish the cause of
+Task #14's historical prolonged-AFK report. Controlled trials demonstrate idle
+resets with idle-only disabled. A user-run 90-second Windows desktop trial of
+diagnostic commit `234e39c` also demonstrated repeated idle-only gating with a
+5-second interval and random breaks disabled: gates closed at 5-6 seconds of
+idle, reopened at 10-11 seconds, and all seven matching injection cycles sent
+2/2 inputs and immediately reset the sampled idle time to zero. One initial
+cycle retained the previous random-break setting and was excluded; additional
+input-timestamp changes during that initial cycle remain unattributed. The
+runner reported the installed app alive more than 130 seconds after restart.
+This trial does not establish ActivityWatch coverage beyond its normal
+180-second timeout or explain the earlier prolonged-AFK interval.
 
 ## Why zzzzziglerrr?
 
