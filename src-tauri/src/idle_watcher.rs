@@ -49,7 +49,9 @@ mod linux {
     /// one bad event handler shouldn't permanently brick idle tracking for the
     /// rest of the process.
     fn lock_recoverable<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
-        mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+        mutex
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 
     impl Dispatch<WlRegistry, GlobalListContents> for State {

@@ -1,10 +1,14 @@
 mod autostart;
 mod config;
+#[cfg(any(test, all(target_os = "windows", feature = "windows-diagnostics")))]
+mod diagnostic_math;
 mod idle_watcher;
 mod kwin_idle_simulate;
 mod mouse_injector;
 mod scheduler;
 mod screensaver_inhibit;
+#[cfg(all(target_os = "windows", feature = "windows-diagnostics"))]
+mod windows_diagnostics;
 mod windows_inhibit;
 
 use config::Config;
@@ -75,9 +79,18 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
     let now = !state.jiggling.load(Ordering::SeqCst);
     state.jiggling.store(now, Ordering::SeqCst);
     log_toggle(now);
-    let next_state = if now { TrayState::Waiting } else { TrayState::Off };
+    let next_state = if now {
+        TrayState::Waiting
+    } else {
+        TrayState::Off
+    };
     *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
-    let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
+    let theme = state
+        .config
+        .lock()
+        .expect("config mutex poisoned")
+        .theme
+        .clone();
     refresh_tray(&state.app_handle, next_state, &theme);
     let _ = state.jiggle_menu_item.set_checked(now);
 
@@ -185,6 +198,14 @@ fn get_status(state: tauri::State<AppState>) -> Status {
 
 #[tauri::command]
 fn set_config(state: tauri::State<AppState>, config: Config) -> Result<(), String> {
+    do_set_config(&state, config)
+}
+
+/// Pulled out of the `set_config` command so the Windows diagnostics
+/// activation path (`windows_diagnostics::activate`) can apply a trial
+/// config through the same real handler the UI uses, instead of poking
+/// `AppState` directly.
+fn do_set_config(state: &AppState, config: Config) -> Result<(), String> {
     config.save().map_err(|err| err.to_string())?;
     let theme = config.theme.clone();
     *state.config.lock().expect("config mutex poisoned") = config;
@@ -381,6 +402,12 @@ fn spawn_jiggle_loop(
             std::thread::sleep(Duration::from_secs(interval_secs.max(1)));
 
             if !jiggling.load(Ordering::SeqCst) {
+                // Read-only baseline sample for the OFF control arm — no
+                // injection happens here, just the same real interval_secs
+                // cadence the ON path uses, so OFF has a comparable raw
+                // idle timeline instead of only a bare tick marker.
+                #[cfg(all(target_os = "windows", feature = "windows-diagnostics"))]
+                windows_diagnostics::baseline();
                 continue;
             }
             let idle_seconds = idle_watcher.as_ref().map_or(0, |w| w.idle_seconds());
@@ -416,6 +443,18 @@ fn spawn_jiggle_loop(
                 false
             };
 
+            #[cfg(all(target_os = "windows", feature = "windows-diagnostics"))]
+            windows_diagnostics::record(serde_json::json!({
+                "phase": "loop",
+                "enabled": true,
+                "interval_secs": interval_secs,
+                "idle_only": idle_only,
+                "idle_seconds": idle_seconds,
+                "gate_open": gate_open,
+                "random_breaks": random_breaks,
+                "on_break": on_break,
+            }));
+
             if gate_open && !on_break {
                 *tray_state.lock().expect("tray state mutex poisoned") = TrayState::Jiggling;
                 refresh_tray(&app_handle, TrayState::Jiggling, &theme);
@@ -450,8 +489,14 @@ pub fn run() {
             let tray_state = Arc::new(Mutex::new(TrayState::Off));
             let app_handle = app.handle().clone();
 
-            let jiggle_menu_item =
-                CheckMenuItem::with_id(app, "toggle_jiggle", "Toggle Jiggle", true, false, None::<&str>)?;
+            let jiggle_menu_item = CheckMenuItem::with_id(
+                app,
+                "toggle_jiggle",
+                "Toggle Jiggle",
+                true,
+                false,
+                None::<&str>,
+            )?;
             let autostart_menu_item = CheckMenuItem::with_id(
                 app,
                 "toggle_autostart",
@@ -485,7 +530,10 @@ pub fn run() {
             )?;
 
             TrayIconBuilder::with_id(TRAY_ID)
-                .icon(tray_icon_for(TrayState::Off, &config.lock().expect("config mutex poisoned").theme))
+                .icon(tray_icon_for(
+                    TrayState::Off,
+                    &config.lock().expect("config mutex poisoned").theme,
+                ))
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
@@ -513,7 +561,12 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
                         if let Some(window) = tray.app_handle().get_webview_window(MAIN_WINDOW) {
                             let visible = window.is_visible().unwrap_or(false);
                             if visible {
@@ -539,7 +592,12 @@ pub fn run() {
             }
 
             #[cfg(any(target_os = "linux", target_os = "windows"))]
-            spawn_jiggle_loop(app_handle.clone(), jiggling.clone(), config.clone(), tray_state.clone());
+            spawn_jiggle_loop(
+                app_handle.clone(),
+                jiggling.clone(),
+                config.clone(),
+                tray_state.clone(),
+            );
 
             #[cfg(target_os = "linux")]
             let screensaver_inhibitor = Arc::new(screensaver_inhibit::ScreenSaverInhibitor::new());
@@ -576,6 +634,10 @@ pub fn run() {
                 #[cfg(target_os = "windows")]
                 windows_inhibitor,
             });
+
+            #[cfg(all(target_os = "windows", feature = "windows-diagnostics"))]
+            windows_diagnostics::activate(&app.state::<AppState>())?;
+
             Ok(())
         })
         .on_window_event(|window, event| {

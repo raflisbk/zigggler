@@ -60,9 +60,12 @@ mod linux {
         pub fn uninhibit(&self) {
             let mut state = self.state.lock().expect("inhibitor mutex poisoned");
             if let Some((conn, cookie)) = state.take() {
-                match Self::proxy(&conn).and_then(|proxy| proxy.call::<_, _, ()>("UnInhibit", &(cookie,)))
+                match Self::proxy(&conn)
+                    .and_then(|proxy| proxy.call::<_, _, ()>("UnInhibit", &(cookie,)))
                 {
-                    Ok(()) => eprintln!("zzzzziglerrr[screensaver_inhibit] UnInhibit ok, cookie={cookie}"),
+                    Ok(()) => {
+                        eprintln!("zzzzziglerrr[screensaver_inhibit] UnInhibit ok, cookie={cookie}")
+                    }
                     Err(err) => {
                         eprintln!("zzzzziglerrr[screensaver_inhibit] UnInhibit FAILED: {err}")
                     }

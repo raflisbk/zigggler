@@ -60,10 +60,9 @@ jobs:
         run: echo "No Cargo.toml found yet — skipping build/test. This passes trivially until rust-core scaffolds the project."
 
   build-windows:
-    # Windows-native MouseInjector/IdleWatcher/autostart/screensaver-inhibit are still
-    # being written (see docs/goals.md) — this job is expected to fail compilation
-    # until that lands. Kept separate from build-linux so one platform's red build
-    # never blocks or hides the other's status.
+    # Test both the normal backend and the opt-in diagnostics. Installer builds
+    # below keep the feature disabled; the diagnostic executable is a separate
+    # artifact for manual testing in an interactive Windows session.
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,6 +96,27 @@ jobs:
         shell: bash
         run: cargo test --verbose --locked
         working-directory: ${{ hashFiles('src-tauri/Cargo.toml') != '' && 'src-tauri' || '.' }}
+
+      - name: cargo test (Windows diagnostics)
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: cargo test --verbose --locked --features windows-diagnostics
+        working-directory: ${{ hashFiles('src-tauri/Cargo.toml') != '' && 'src-tauri' || '.' }}
+
+      - name: cargo build (Windows diagnostics)
+        if: steps.has_cargo.outputs.exists == 'true'
+        shell: bash
+        run: cargo build --locked --features windows-diagnostics
+        working-directory: ${{ hashFiles('src-tauri/Cargo.toml') != '' && 'src-tauri' || '.' }}
+
+      - name: Upload Windows diagnostics
+        if: steps.has_cargo.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-idle-diagnostics
+          path: src-tauri/target/debug/zzzzziglerrr.exe
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Set up Node.js
         if: steps.has_cargo.outputs.exists == 'true'
