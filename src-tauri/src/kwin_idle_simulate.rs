@@ -125,7 +125,9 @@ mod linux {
         }
 
         fn conn_lock(&self) -> MutexGuard<'_, Connection> {
-            self.conn.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+            self.conn
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
         }
     }
 }

@@ -79,9 +79,18 @@ fn do_toggle_jiggle(state: &AppState) -> bool {
     let now = !state.jiggling.load(Ordering::SeqCst);
     state.jiggling.store(now, Ordering::SeqCst);
     log_toggle(now);
-    let next_state = if now { TrayState::Waiting } else { TrayState::Off };
+    let next_state = if now {
+        TrayState::Waiting
+    } else {
+        TrayState::Off
+    };
     *state.tray_state.lock().expect("tray state mutex poisoned") = next_state;
-    let theme = state.config.lock().expect("config mutex poisoned").theme.clone();
+    let theme = state
+        .config
+        .lock()
+        .expect("config mutex poisoned")
+        .theme
+        .clone();
     refresh_tray(&state.app_handle, next_state, &theme);
     let _ = state.jiggle_menu_item.set_checked(now);
 
@@ -480,8 +489,14 @@ pub fn run() {
             let tray_state = Arc::new(Mutex::new(TrayState::Off));
             let app_handle = app.handle().clone();
 
-            let jiggle_menu_item =
-                CheckMenuItem::with_id(app, "toggle_jiggle", "Toggle Jiggle", true, false, None::<&str>)?;
+            let jiggle_menu_item = CheckMenuItem::with_id(
+                app,
+                "toggle_jiggle",
+                "Toggle Jiggle",
+                true,
+                false,
+                None::<&str>,
+            )?;
             let autostart_menu_item = CheckMenuItem::with_id(
                 app,
                 "toggle_autostart",
@@ -515,7 +530,10 @@ pub fn run() {
             )?;
 
             TrayIconBuilder::with_id(TRAY_ID)
-                .icon(tray_icon_for(TrayState::Off, &config.lock().expect("config mutex poisoned").theme))
+                .icon(tray_icon_for(
+                    TrayState::Off,
+                    &config.lock().expect("config mutex poisoned").theme,
+                ))
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
@@ -543,7 +561,12 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
                         if let Some(window) = tray.app_handle().get_webview_window(MAIN_WINDOW) {
                             let visible = window.is_visible().unwrap_or(false);
                             if visible {
@@ -569,7 +592,12 @@ pub fn run() {
             }
 
             #[cfg(any(target_os = "linux", target_os = "windows"))]
-            spawn_jiggle_loop(app_handle.clone(), jiggling.clone(), config.clone(), tray_state.clone());
+            spawn_jiggle_loop(
+                app_handle.clone(),
+                jiggling.clone(),
+                config.clone(),
+                tray_state.clone(),
+            );
 
             #[cfg(target_os = "linux")]
             let screensaver_inhibitor = Arc::new(screensaver_inhibit::ScreenSaverInhibitor::new());

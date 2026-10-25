@@ -60,8 +60,8 @@ pub use windows::{disable, enable};
 #[cfg(target_os = "windows")]
 mod windows {
     use std::io;
-    use winreg::enums::{HKEY_CURRENT_USER, KEY_SET_VALUE};
     use winreg::RegKey;
+    use winreg::enums::{HKEY_CURRENT_USER, KEY_SET_VALUE};
 
     const RUN_KEY_PATH: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     const VALUE_NAME: &str = "zzzzziglerrr";
